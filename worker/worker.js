@@ -67,7 +67,7 @@ async function executeJob(job) {
       playbookPath,
     ], {
       env,
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: ['pipe', 'pipe', 'pipe'],
     })
 
     if (ssh.encrypted_ssh_password) {
