@@ -1,5 +1,9 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
+import { motion } from 'framer-motion'
+import { StatusBadge } from '../ui/StatusBadge'
+import { YamlEditor } from './YamlEditor'
+import { ScrollText, Upload } from 'lucide-react'
 
 interface Playbook {
   id: string
@@ -11,10 +15,11 @@ interface Playbook {
 
 interface PlaybookTriggerProps {
   serverId: string | null
+  serverName?: string
   onJobCreated: (jobId: string) => void
 }
 
-export function PlaybookTrigger({ serverId, onJobCreated }: PlaybookTriggerProps) {
+export function PlaybookTrigger({ serverId, serverName, onJobCreated }: PlaybookTriggerProps) {
   const [tab, setTab] = useState<'system' | 'custom'>('system')
   const [systemPlaybooks, setSystemPlaybooks] = useState<Playbook[]>([])
   const [selectedPlaybookId, setSelectedPlaybookId] = useState('')
@@ -22,6 +27,7 @@ export function PlaybookTrigger({ serverId, onJobCreated }: PlaybookTriggerProps
   const [customName, setCustomName] = useState('')
   const [deploying, setDeploying] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [deploySuccess, setDeploySuccess] = useState<string | null>(null)
 
   useEffect(() => {
     supabase
@@ -42,6 +48,7 @@ export function PlaybookTrigger({ serverId, onJobCreated }: PlaybookTriggerProps
     if (!serverId) return
 
     setErrorMessage(null)
+    setDeploySuccess(null)
     setDeploying(true)
     let playbookId = selectedPlaybookId
 
@@ -82,108 +89,101 @@ export function PlaybookTrigger({ serverId, onJobCreated }: PlaybookTriggerProps
       return
     }
 
-    if (job) onJobCreated(job.id)
+    if (job) {
+      onJobCreated(job.id)
+      setDeploySuccess('Job deployed successfully')
+    }
     setDeploying(false)
   }
 
   const selectedPlaybook = systemPlaybooks.find((p) => p.id === selectedPlaybookId)
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-200">Deploy Playbook</h2>
-        {errorMessage && (
-          <p className="text-red-400 text-xs bg-red-900/30 px-2 py-1 rounded">{errorMessage}</p>
-        )}
-      </div>
+    <div className="space-y-4">
+      <h2 className="text-lg font-semibold text-gray-200 flex items-center gap-2">
+        <ScrollText className="w-4 h-4 text-emerald-400" />
+        Deploy Playbook
+      </h2>
 
-      <div className="flex gap-1 bg-gray-800 rounded-lg p-1 border border-gray-700">
-        <button
-          onClick={() => setTab('system')}
-          className={`flex-1 py-1.5 text-sm rounded-md transition-colors ${
-            tab === 'system' ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:text-gray-200'
-          }`}
-        >
-          System Playbooks
-        </button>
-        <button
-          onClick={() => setTab('custom')}
-          className={`flex-1 py-1.5 text-sm rounded-md transition-colors ${
-            tab === 'custom' ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:text-gray-200'
-          }`}
-        >
-          Custom Playbook
-        </button>
+      <div className="flex gap-1 bg-gray-800/50 rounded-lg p-1 border border-gray-700">
+        {(['system', 'custom'] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`flex-1 py-2 text-sm rounded-md transition-all font-medium ${
+              tab === t
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            {t === 'system' ? 'System Playbooks' : 'Custom Playbook'}
+          </button>
+        ))}
       </div>
 
       {tab === 'system' ? (
-        <div className="space-y-2">
+        <div className="space-y-3">
           <select
             value={selectedPlaybookId}
             onChange={(e) => setSelectedPlaybookId(e.target.value)}
-            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-100 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+            className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-gray-200 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
           >
-            <option value="">-- Select a playbook --</option>
+            <option value="">Select a playbook...</option>
             {systemPlaybooks.map((p) => (
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
           </select>
           {selectedPlaybook && (
-            <div className="bg-gray-800 p-3 rounded-lg border border-gray-700">
-              <p className="text-sm text-gray-300">{selectedPlaybook.description}</p>
-              <pre className="mt-2 text-xs text-gray-400 overflow-x-auto max-h-32">{selectedPlaybook.content_yaml.slice(0, 500)}</pre>
-            </div>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-gray-800/50 p-3 rounded-lg border border-gray-700"
+            >
+              <p className="text-sm text-gray-300 mb-2">{selectedPlaybook.description}</p>
+              <pre className="text-xs text-gray-400 overflow-x-auto max-h-40">{selectedPlaybook.content_yaml.slice(0, 500)}</pre>
+            </motion.div>
           )}
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           <input
             value={customName}
             onChange={(e) => setCustomName(e.target.value)}
             placeholder="Playbook name"
-            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-100 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+            className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-gray-200 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none placeholder-gray-500"
           />
-          <textarea
+          <YamlEditor
             value={customYaml}
-            onChange={(e) => setCustomYaml(e.target.value)}
+            onChange={setCustomYaml}
             placeholder="Paste your Ansible playbook YAML here..."
-            rows={10}
-            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-100 text-sm font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+            minHeight="240px"
           />
-          <label className="flex items-center gap-2 text-sm text-gray-400">
-            <input
-              type="file"
-              accept=".yml,.yaml"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0]
-                if (file) {
-                  setCustomName(file.name.replace(/\.(yml|yaml)$/, ''))
-                  file.text().then(setCustomYaml)
-                }
-              }}
-            />
-            <span className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded cursor-pointer text-xs transition-colors">
-              Upload YAML file
-            </span>
-          </label>
         </div>
       )}
 
       {errorMessage && (
-        <p className="text-red-400 text-xs bg-red-900/30 p-2 rounded">{errorMessage}</p>
+        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-red-400 text-sm">{errorMessage}</motion.p>
+      )}
+      {deploySuccess && (
+        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-emerald-400 text-sm">{deploySuccess}</motion.p>
       )}
 
       <button
         onClick={handleDeploy}
         disabled={deploying || !serverId || (tab === 'system' && !selectedPlaybookId) || (tab === 'custom' && !customYaml)}
-        className="w-full py-2 px-4 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+        className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition-colors text-white flex items-center justify-center gap-2"
       >
-        {!serverId
-          ? 'Select a target server first'
-          : deploying
-            ? 'Deploying...'
-            : 'Deploy Playbook'}
+        {deploying ? (
+          <>
+            <motion.span animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full" />
+            Deploying...
+          </>
+        ) : (
+          <>
+            <Upload className="w-4 h-4" />
+            {!serverId ? 'Select a target server first' : `Deploy to ${serverName || serverId}`}
+          </>
+        )}
       </button>
     </div>
   )

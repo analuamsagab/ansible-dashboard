@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Server, Plus, Trash2, EthernetPort, User, Key, Lock } from 'lucide-react'
+import { CardSkeleton } from '../ui/Skeleton'
 
 interface Server {
   id: string
@@ -23,7 +26,8 @@ export function ServerManager({ onSelect, selectedId }: ServerManagerProps) {
   const [sshPort, setSshPort] = useState('22')
   const [sshKey, setSshKey] = useState('')
   const [sshPassword, setSshPassword] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [deleting, setDeleting] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const fetchServers = async () => {
@@ -34,9 +38,11 @@ export function ServerManager({ onSelect, selectedId }: ServerManagerProps) {
     if (error) {
       console.error('fetchServers error:', error.message, error.details, error.hint)
       setErrorMessage(error.message)
+      setLoading(false)
       return
     }
     setServers(data || [])
+    setLoading(false)
   }
 
   useEffect(() => { fetchServers() }, [])
@@ -51,7 +57,6 @@ export function ServerManager({ onSelect, selectedId }: ServerManagerProps) {
     }
 
     setLoading(true)
-
     const { error } = await supabase.from('target_servers').insert({
       friendly_name: friendlyName,
       ip_address: ipAddress,
@@ -80,112 +85,149 @@ export function ServerManager({ onSelect, selectedId }: ServerManagerProps) {
   }
 
   const handleDelete = async (id: string) => {
+    setDeleting(id)
     const { error } = await supabase.from('target_servers').delete().eq('id', id)
     if (error) {
       console.error('delete server error:', error.message, error.details, error.hint)
       setErrorMessage(error.message)
+      setDeleting(null)
       return
     }
+    setDeleting(null)
+    if (selectedId === id) onSelect(null)
     fetchServers()
   }
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-200">Target Servers</h2>
+        <h2 className="text-lg font-semibold text-gray-200 flex items-center gap-2">
+          <Server className="w-4 h-4 text-emerald-400" />
+          Servers
+        </h2>
         <button
           onClick={() => { setShowForm(!showForm); setErrorMessage(null) }}
-          className="text-sm px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-md transition-colors"
+          className="flex items-center gap-1.5 text-sm px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg transition-colors text-white"
         >
-          {showForm ? 'Cancel' : '+ Add Server'}
+          <Plus className="w-3.5 h-3.5" />
+          {showForm ? 'Cancel' : 'Add'}
         </button>
       </div>
 
-      {showForm && (
-        <form onSubmit={handleSubmit} className="space-y-2 bg-gray-800 p-3 rounded-lg border border-gray-700">
-          <input
-            value={friendlyName}
-            onChange={(e) => setFriendlyName(e.target.value)}
-            placeholder="Friendly name (e.g. Prod-01)"
-            className="w-full px-2 py-1.5 bg-gray-700 border border-gray-600 rounded text-sm text-gray-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-            required
-          />
-          <input
-            value={ipAddress}
-            onChange={(e) => setIpAddress(e.target.value)}
-            placeholder="IP address (e.g. 192.168.1.100)"
-            className="w-full px-2 py-1.5 bg-gray-700 border border-gray-600 rounded text-sm text-gray-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-            required
-          />
-          <div className="flex gap-2">
+      <AnimatePresence>
+        {showForm && (
+          <motion.form
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            onSubmit={handleSubmit}
+            className="space-y-2 bg-gray-800/50 p-3 rounded-lg border border-gray-700 overflow-hidden"
+          >
             <input
-              value={sshUser}
-              onChange={(e) => setSshUser(e.target.value)}
-              placeholder="SSH user"
-              className="flex-1 px-2 py-1.5 bg-gray-700 border border-gray-600 rounded text-sm text-gray-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              value={friendlyName}
+              onChange={(e) => setFriendlyName(e.target.value)}
+              placeholder="Friendly name"
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm text-gray-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none placeholder-gray-500"
               required
             />
             <input
-              value={sshPort}
-              onChange={(e) => setSshPort(e.target.value)}
-              placeholder="Port"
-              className="w-20 px-2 py-1.5 bg-gray-700 border border-gray-600 rounded text-sm text-gray-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              value={ipAddress}
+              onChange={(e) => setIpAddress(e.target.value)}
+              placeholder="IP address"
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm text-gray-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none placeholder-gray-500"
               required
             />
-          </div>
-          <textarea
-            value={sshKey}
-            onChange={(e) => setSshKey(e.target.value)}
-            placeholder="SSH private key (paste here)"
-            rows={3}
-            className="w-full px-2 py-1.5 bg-gray-700 border border-gray-600 rounded text-sm text-gray-100 font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-          />
-          <input
-            type="password"
-            value={sshPassword}
-            onChange={(e) => setSshPassword(e.target.value)}
-            placeholder="SSH password (or fill key above)"
-            className="w-full px-2 py-1.5 bg-gray-700 border border-gray-600 rounded text-sm text-gray-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-          />
-          <p className="text-xs text-gray-500">Fill SSH key OR password — at least one required</p>
-          {errorMessage && (
-            <p className="text-red-400 text-xs bg-red-900/30 p-2 rounded">{errorMessage}</p>
-          )}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded text-sm font-medium transition-colors"
-          >
-            {loading ? 'Saving...' : 'Save Server'}
-          </button>
-        </form>
-      )}
-
-      <div className="space-y-1 max-h-64 overflow-y-auto">
-        {servers.map((s) => (
-          <div
-            key={s.id}
-            onClick={() => onSelect(selectedId === s.id ? null : s)}
-            className={`flex items-center justify-between p-2 rounded cursor-pointer transition-colors ${
-              selectedId === s.id
-                ? 'bg-emerald-900/40 border border-emerald-700'
-                : 'bg-gray-800/50 border border-gray-700 hover:bg-gray-700'
-            }`}
-          >
-            <div>
-              <p className="text-sm font-medium text-gray-200">{s.friendly_name}</p>
-              <p className="text-xs text-gray-400">{s.ssh_user}@{s.ip_address}:{s.ssh_port}</p>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <User className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500" />
+                <input
+                  value={sshUser}
+                  onChange={(e) => setSshUser(e.target.value)}
+                  className="w-full pl-8 pr-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm text-gray-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  required
+                />
+              </div>
+              <input
+                value={sshPort}
+                onChange={(e) => setSshPort(e.target.value)}
+                className="w-20 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm text-gray-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                required
+              />
             </div>
+            <div className="relative">
+              <Key className="w-3.5 h-3.5 absolute left-2.5 top-3 text-gray-500" />
+              <textarea
+                value={sshKey}
+                onChange={(e) => setSshKey(e.target.value)}
+                placeholder="SSH private key (optional)"
+                rows={2}
+                className="w-full pl-8 pr-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm text-gray-100 font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none placeholder-gray-500"
+              />
+            </div>
+            <div className="relative">
+              <Lock className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500" />
+              <input
+                type="password"
+                value={sshPassword}
+                onChange={(e) => setSshPassword(e.target.value)}
+                placeholder="SSH password (or use key above)"
+                className="w-full pl-8 pr-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm text-gray-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none placeholder-gray-500"
+              />
+            </div>
+            {errorMessage && (
+              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-red-400 text-xs">{errorMessage}</motion.p>
+            )}
             <button
-              onClick={(e) => { e.stopPropagation(); handleDelete(s.id) }}
-              className="text-xs text-red-400 hover:text-red-300"
+              type="submit"
+              disabled={loading}
+              className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded-lg text-sm font-medium transition-colors text-white"
             >
-              Delete
+              {loading ? 'Saving...' : 'Save Server'}
             </button>
-          </div>
-        ))}
-        {servers.length === 0 && (
-          <p className="text-sm text-gray-500 text-center py-4">No servers added yet</p>
+          </motion.form>
+        )}
+      </AnimatePresence>
+
+      <div className="space-y-1.5 max-h-64 overflow-y-auto">
+        {loading ? (
+          Array.from({ length: 3 }).map((_, i) => <CardSkeleton key={i} />)
+        ) : servers.length === 0 ? (
+          <div className="text-center py-6 text-gray-500 text-sm">No servers yet</div>
+        ) : (
+          servers.map((s, i) => (
+            <motion.div
+              key={s.id}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: i * 0.05 }}
+              onClick={() => onSelect(selectedId === s.id ? null : s)}
+              className={`group flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all border ${
+                selectedId === s.id
+                  ? 'bg-emerald-900/20 border-emerald-700/50 shadow-sm shadow-emerald-900/20'
+                  : 'bg-gray-800/40 border-gray-700/50 hover:bg-gray-800/70 hover:border-gray-600'
+              }`}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={`p-1.5 rounded-lg ${selectedId === s.id ? 'bg-emerald-500/20' : 'bg-gray-700/50'}`}>
+                  <Server className={`w-4 h-4 ${selectedId === s.id ? 'text-emerald-400' : 'text-gray-500'}`} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-200 truncate">{s.friendly_name}</p>
+                  <p className="text-xs text-gray-500 flex items-center gap-1">
+                    <EthernetPort className="w-3 h-3" />
+                    {s.ssh_user}@{s.ip_address}:{s.ssh_port}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={(e) => { e.stopPropagation(); handleDelete(s.id) }}
+                disabled={deleting === s.id}
+                className="p-1.5 rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </motion.div>
+          ))
         )}
       </div>
     </div>
