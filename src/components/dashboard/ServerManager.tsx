@@ -23,27 +23,43 @@ export function ServerManager({ onSelect, selectedId }: ServerManagerProps) {
   const [sshPort, setSshPort] = useState('22')
   const [sshKey, setSshKey] = useState('')
   const [loading, setLoading] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const fetchServers = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('target_servers')
       .select('id, friendly_name, ip_address, ssh_port, ssh_user')
       .order('created_at', { ascending: false })
-    if (data) setServers(data)
+    if (error) {
+      console.error('fetchServers error:', error.message, error.details, error.hint)
+      setErrorMessage(error.message)
+      return
+    }
+    setServers(data || [])
   }
 
   useEffect(() => { fetchServers() }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setErrorMessage(null)
     setLoading(true)
-    await supabase.from('target_servers').insert({
+
+    const { error } = await supabase.from('target_servers').insert({
       friendly_name: friendlyName,
       ip_address: ipAddress,
       ssh_port: parseInt(sshPort),
       ssh_user: sshUser,
       encrypted_ssh_key: sshKey || null,
     })
+
+    if (error) {
+      console.error('insert server error:', error.message, error.details, error.hint)
+      setErrorMessage(error.message)
+      setLoading(false)
+      return
+    }
+
     setFriendlyName('')
     setIpAddress('')
     setSshUser('root')
@@ -55,7 +71,12 @@ export function ServerManager({ onSelect, selectedId }: ServerManagerProps) {
   }
 
   const handleDelete = async (id: string) => {
-    await supabase.from('target_servers').delete().eq('id', id)
+    const { error } = await supabase.from('target_servers').delete().eq('id', id)
+    if (error) {
+      console.error('delete server error:', error.message, error.details, error.hint)
+      setErrorMessage(error.message)
+      return
+    }
     fetchServers()
   }
 
@@ -64,7 +85,7 @@ export function ServerManager({ onSelect, selectedId }: ServerManagerProps) {
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-gray-200">Target Servers</h2>
         <button
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => { setShowForm(!showForm); setErrorMessage(null) }}
           className="text-sm px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-md transition-colors"
         >
           {showForm ? 'Cancel' : '+ Add Server'}
@@ -110,6 +131,9 @@ export function ServerManager({ onSelect, selectedId }: ServerManagerProps) {
             rows={3}
             className="w-full px-2 py-1.5 bg-gray-700 border border-gray-600 rounded text-sm text-gray-100 font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"
           />
+          {errorMessage && (
+            <p className="text-red-400 text-xs bg-red-900/30 p-2 rounded">{errorMessage}</p>
+          )}
           <button
             type="submit"
             disabled={loading}

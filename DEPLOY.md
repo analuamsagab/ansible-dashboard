@@ -12,10 +12,7 @@
 ## 1. Initial Server Setup
 
 ```bash
-# Update system
 apt update && apt upgrade -y
-
-# Install essential tools
 apt install -y curl wget git ufw nginx
 ```
 
@@ -34,7 +31,7 @@ ufw --force enable
 ```bash
 curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
 apt install -y nodejs
-node -v    # Should show v20.x
+node -v
 npm -v
 ```
 
@@ -88,8 +85,6 @@ npm install
 npm run build
 ```
 
-The built files will be in `/opt/ansible-dashboard/dist/`.
-
 ---
 
 ## 7. Install Worker Dependencies
@@ -101,7 +96,7 @@ cd /opt/ansible-dashboard/worker
 npm install
 apt install -y ansible
 
-# OR if using Docker (recommended)
+# OR if using Docker
 docker build -t ansible-worker .
 ```
 
@@ -203,11 +198,9 @@ WantedBy=multi-user.target
 ### Enable & Start
 
 ```bash
-# Create ansible user
 useradd -m -s /bin/bash ansible
 chown -R ansible:ansible /opt/ansible-dashboard
 
-# Enable & start
 systemctl daemon-reload
 systemctl enable ansible-worker
 systemctl start ansible-worker
@@ -216,36 +209,41 @@ systemctl status ansible-worker
 
 ---
 
-## 10. Verify Deployment
+## 10. Run SQL Fix
+
+Before using the app, run the SQL fix in Supabase SQL Editor:
 
 ```bash
-# Check services
-systemctl status nginx
-systemctl status ansible-worker
-
-# Check frontend
-curl -I http://ansible.example.com
-
-# Check worker logs
-journalctl -u ansible-worker -f
+cat /opt/ansible-dashboard/supabase-fix.sql
 ```
 
-Open browser and navigate to `http://ansible.example.com`.
+Copy the output and paste into Supabase SQL Editor, then run.
 
 ---
 
-## 11. Updating
+## 11. Verify Deployment
 
-Pull latest code and run the deploy script:
+```bash
+systemctl status nginx
+systemctl status ansible-worker
+curl -I http://ansible.example.com
+journalctl -u ansible-worker -f
+```
+
+Open browser to `http://ansible.example.com`.
+
+---
+
+## 12. Updating
+
+After pulling new code from GitHub, run the update script:
 
 ```bash
 cd /opt/ansible-dashboard
-git pull origin main
-chmod +x deploy.sh
-./deploy.sh
+sudo ./update.sh
 ```
 
-See `deploy.sh` for individual step breakdown.
+If there are database schema changes, also run the SQL from `supabase-fix.sql` (or the new SQL file) in Supabase SQL Editor.
 
 ---
 
