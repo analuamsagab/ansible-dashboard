@@ -160,7 +160,7 @@ export function ServerManager() {
         )}
       </AnimatePresence>
 
-      <div className="space-y-1.5">
+      <div className="space-y-1.5 pt-2">
         {loading ? (
           Array.from({ length: 3 }).map((_, i) => <CardSkeleton key={i} />)
         ) : servers.length === 0 ? (
