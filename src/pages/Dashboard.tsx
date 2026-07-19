@@ -4,16 +4,12 @@ import { supabase } from '../lib/supabase'
 import { Sidebar } from '../components/layout/Sidebar'
 import { DashboardOverview } from '../components/dashboard/DashboardOverview'
 import { ServerManager } from '../components/dashboard/ServerManager'
-import { PlaybookTrigger } from '../components/dashboard/PlaybookTrigger'
+import { PlaybookManager } from '../components/dashboard/PlaybookManager'
+import { PlaybookDeploy } from '../components/dashboard/PlaybookDeploy'
 import { TerminalView } from '../components/dashboard/TerminalView'
 import { JobHistory } from '../components/dashboard/JobHistory'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Toaster } from 'react-hot-toast'
-
-interface Server {
-  id: string
-  friendly_name: string
-}
 
 export function DashboardPage() {
   const { user } = useAuth()
@@ -53,15 +49,22 @@ export function DashboardPage() {
     setActiveSection('overview')
   }
 
+  const handleSelectServer = (server: { id: string; friendly_name: string } | null) => {
+    setSelectedServerId(server?.id ?? null)
+  }
+
   const renderContent = () => {
     switch (activeSection) {
       case 'overview':
         return (
           <motion.div key="overview" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-            <DashboardOverview />
+            <DashboardOverview
+              selectedServerId={selectedServerId}
+              onSelectServer={handleSelectServer}
+            />
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <div className="bg-gray-900/80 backdrop-blur-sm rounded-xl border border-gray-800 p-4">
-                <PlaybookTrigger
+                <PlaybookDeploy
                   serverId={selectedServerId}
                   serverName={selectedServerName}
                   onJobCreated={handleJobCreated}
@@ -77,10 +80,7 @@ export function DashboardPage() {
         return (
           <motion.div key="servers" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <div className="bg-gray-900/80 backdrop-blur-sm rounded-xl border border-gray-800 p-4 max-w-lg">
-              <ServerManager
-                onSelect={(s) => setSelectedServerId(s?.id ?? null)}
-                selectedId={selectedServerId}
-              />
+              <ServerManager />
             </div>
           </motion.div>
         )
@@ -88,11 +88,7 @@ export function DashboardPage() {
         return (
           <motion.div key="playbooks" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <div className="bg-gray-900/80 backdrop-blur-sm rounded-xl border border-gray-800 p-4 max-w-2xl">
-              <PlaybookTrigger
-                serverId={selectedServerId}
-                serverName={selectedServerName}
-                onJobCreated={handleJobCreated}
-              />
+              <PlaybookManager />
             </div>
           </motion.div>
         )
@@ -108,7 +104,7 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 flex">
+    <div className="h-screen bg-gray-950 flex">
       <Toaster
         position="top-right"
         toastOptions={{

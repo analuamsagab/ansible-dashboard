@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { motion } from 'framer-motion'
 import { Server, Play, CheckCircle, XCircle } from 'lucide-react'
+import { ServerSelector } from './ServerSelector'
 
 interface Stats {
   servers: number
@@ -10,7 +11,12 @@ interface Stats {
   jobsFailed: number
 }
 
-export function DashboardOverview() {
+interface DashboardOverviewProps {
+  selectedServerId: string | null
+  onSelectServer: (server: { id: string; friendly_name: string; ip_address: string; ssh_port: number; ssh_user: string } | null) => void
+}
+
+export function DashboardOverview({ selectedServerId, onSelectServer }: DashboardOverviewProps) {
   const [stats, setStats] = useState<Stats>({ servers: 0, jobsTotal: 0, jobsSuccess: 0, jobsFailed: 0 })
 
   useEffect(() => {
@@ -37,24 +43,35 @@ export function DashboardOverview() {
   ]
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-      {cards.map((card, i) => (
-        <motion.div
-          key={card.label}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: i * 0.08 }}
-          className="bg-gray-900/80 backdrop-blur-sm border border-gray-800 rounded-xl p-4 flex items-center gap-3"
-        >
-          <div className={`p-2 rounded-lg ${card.bg}`}>
-            <card.icon className={`w-5 h-5 ${card.color}`} />
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-gray-100">{card.value}</p>
-            <p className="text-xs text-gray-500">{card.label}</p>
-          </div>
-        </motion.div>
-      ))}
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {cards.map((card, i) => (
+          <motion.div
+            key={card.label}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.08 }}
+            className="bg-gray-900/80 backdrop-blur-sm border border-gray-800 rounded-xl p-4 flex items-center gap-3"
+          >
+            <div className={`p-2 rounded-lg ${card.bg}`}>
+              <card.icon className={`w-5 h-5 ${card.color}`} />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-100">{card.value}</p>
+              <p className="text-xs text-gray-500">{card.label}</p>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        className="bg-gray-900/80 backdrop-blur-sm border border-gray-800 rounded-xl p-4"
+      >
+        <ServerSelector selectedId={selectedServerId} onSelect={onSelectServer} />
+      </motion.div>
     </div>
   )
 }

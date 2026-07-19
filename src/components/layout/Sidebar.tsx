@@ -32,7 +32,7 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
   return (
     <motion.aside
       animate={{ width: collapsed ? 64 : 240 }}
-      className="bg-gray-900/90 backdrop-blur-sm border-r border-gray-800 flex flex-col h-full overflow-hidden"
+      className="bg-gray-900/90 backdrop-blur-sm border-r border-gray-800 flex flex-col h-full shrink-0 overflow-hidden"
     >
       <div className="flex items-center justify-between p-4 border-b border-gray-800">
         <AnimatePresence>
