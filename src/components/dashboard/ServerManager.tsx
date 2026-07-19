@@ -22,6 +22,7 @@ export function ServerManager({ onSelect, selectedId }: ServerManagerProps) {
   const [sshUser, setSshUser] = useState('root')
   const [sshPort, setSshPort] = useState('22')
   const [sshKey, setSshKey] = useState('')
+  const [sshPassword, setSshPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
@@ -43,6 +44,12 @@ export function ServerManager({ onSelect, selectedId }: ServerManagerProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setErrorMessage(null)
+
+    if (!sshKey && !sshPassword) {
+      setErrorMessage('SSH key or password is required')
+      return
+    }
+
     setLoading(true)
 
     const { error } = await supabase.from('target_servers').insert({
@@ -51,6 +58,7 @@ export function ServerManager({ onSelect, selectedId }: ServerManagerProps) {
       ssh_port: parseInt(sshPort),
       ssh_user: sshUser,
       encrypted_ssh_key: sshKey || null,
+      encrypted_ssh_password: sshPassword || null,
     })
 
     if (error) {
@@ -65,6 +73,7 @@ export function ServerManager({ onSelect, selectedId }: ServerManagerProps) {
     setSshUser('root')
     setSshPort('22')
     setSshKey('')
+    setSshPassword('')
     setShowForm(false)
     setLoading(false)
     fetchServers()
@@ -127,10 +136,18 @@ export function ServerManager({ onSelect, selectedId }: ServerManagerProps) {
           <textarea
             value={sshKey}
             onChange={(e) => setSshKey(e.target.value)}
-            placeholder="SSH private key (paste or leave empty for password auth)"
+            placeholder="SSH private key (paste here)"
             rows={3}
             className="w-full px-2 py-1.5 bg-gray-700 border border-gray-600 rounded text-sm text-gray-100 font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"
           />
+          <input
+            type="password"
+            value={sshPassword}
+            onChange={(e) => setSshPassword(e.target.value)}
+            placeholder="SSH password (or fill key above)"
+            className="w-full px-2 py-1.5 bg-gray-700 border border-gray-600 rounded text-sm text-gray-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+          />
+          <p className="text-xs text-gray-500">Fill SSH key OR password — at least one required</p>
           {errorMessage && (
             <p className="text-red-400 text-xs bg-red-900/30 p-2 rounded">{errorMessage}</p>
           )}

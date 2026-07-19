@@ -57,12 +57,6 @@ async function executeJob(job) {
     }
 
     const inventory = `${server.ip_address},`
-
-    const sshArgs = ['-o', 'StrictHostKeyChecking=no', '-o', 'UserKnownHostsFile=/dev/null']
-    if (ssh.encrypted_ssh_key) {
-      sshArgs.push('-i', sshKeyPath)
-    }
-
     const env = { ...process.env, ANSIBLE_HOST_KEY_CHECKING: 'False' }
 
     const child = spawn('ansible-playbook', [
