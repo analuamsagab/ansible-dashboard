@@ -1,0 +1,13 @@
+{
+  "name": "ansible-worker",
+  "private": true,
+  "type": "module",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node worker.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.110.7",
+    "@supabase/realtime-js": "^2.11.2"
+  }
+}
