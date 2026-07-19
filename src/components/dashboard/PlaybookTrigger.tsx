@@ -21,13 +21,19 @@ export function PlaybookTrigger({ serverId, onJobCreated }: PlaybookTriggerProps
   const [customYaml, setCustomYaml] = useState('')
   const [customName, setCustomName] = useState('')
   const [deploying, setDeploying] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   useEffect(() => {
     supabase
       .from('playbooks')
       .select('id, name, description, content_yaml, is_system_default')
       .eq('is_system_default', true)
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('fetch playbooks error:', error.message, error.details, error.hint)
+          setErrorMessage(error.message)
+          return
+        }
         if (data) setSystemPlaybooks(data)
       })
   }, [])
@@ -35,11 +41,12 @@ export function PlaybookTrigger({ serverId, onJobCreated }: PlaybookTriggerProps
   const handleDeploy = async () => {
     if (!serverId) return
 
+    setErrorMessage(null)
     setDeploying(true)
     let playbookId = selectedPlaybookId
 
     if (tab === 'custom') {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('playbooks')
         .insert({
           name: customName || 'Custom Playbook',
@@ -48,10 +55,17 @@ export function PlaybookTrigger({ serverId, onJobCreated }: PlaybookTriggerProps
         })
         .select('id')
         .single()
+
+      if (error) {
+        console.error('insert custom playbook error:', error.message, error.details, error.hint)
+        setErrorMessage(error.message)
+        setDeploying(false)
+        return
+      }
       if (data) playbookId = data.id
     }
 
-    const { data: job } = await supabase
+    const { data: job, error: jobError } = await supabase
       .from('ansible_jobs')
       .insert({
         server_id: serverId,
@@ -61,6 +75,13 @@ export function PlaybookTrigger({ serverId, onJobCreated }: PlaybookTriggerProps
       .select('id')
       .single()
 
+    if (jobError) {
+      console.error('insert job error:', jobError.message, jobError.details, jobError.hint)
+      setErrorMessage(jobError.message)
+      setDeploying(false)
+      return
+    }
+
     if (job) onJobCreated(job.id)
     setDeploying(false)
   }
@@ -69,7 +90,12 @@ export function PlaybookTrigger({ serverId, onJobCreated }: PlaybookTriggerProps
 
   return (
     <div className="space-y-3">
-      <h2 className="text-lg font-semibold text-gray-200">Deploy Playbook</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-gray-200">Deploy Playbook</h2>
+        {errorMessage && (
+          <p className="text-red-400 text-xs bg-red-900/30 px-2 py-1 rounded">{errorMessage}</p>
+        )}
+      </div>
 
       <div className="flex gap-1 bg-gray-800 rounded-lg p-1 border border-gray-700">
         <button
@@ -142,6 +168,10 @@ export function PlaybookTrigger({ serverId, onJobCreated }: PlaybookTriggerProps
             </span>
           </label>
         </div>
+      )}
+
+      {errorMessage && (
+        <p className="text-red-400 text-xs bg-red-900/30 p-2 rounded">{errorMessage}</p>
       )}
 
       <button

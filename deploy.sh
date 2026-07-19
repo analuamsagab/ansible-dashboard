@@ -56,6 +56,7 @@ else
 fi
 
 # --- Step 4: Clone or pull repo ---
+git config --global --add safe.directory "$APP_DIR" 2>/dev/null
 if [[ -d "$APP_DIR/.git" ]]; then
     log "Pulling latest code..."
     cd "$APP_DIR"

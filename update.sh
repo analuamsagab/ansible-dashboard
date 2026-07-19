@@ -26,6 +26,7 @@ fail() { echo -e "${RED}[✗]${NC} $1"; exit 1; }
 
 # --- Step 1: Pull latest code ---
 log "Pulling latest code..."
+git config --global --add safe.directory "$APP_DIR" 2>/dev/null
 cd "$APP_DIR"
 git pull origin main
 [[ $? -eq 0 ]] || fail "Git pull failed"
