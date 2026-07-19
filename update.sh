@@ -48,6 +48,7 @@ else
     log "Reinstalling worker dependencies..."
     cd "$WORKER_DIR"
     npm install
+    npm install dotenv
 
     # Check if Ansible needs update
     if ! command -v ansible-playbook &>/dev/null; then

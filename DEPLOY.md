@@ -157,7 +157,8 @@ Type=simple
 User=ansible
 Group=ansible
 WorkingDirectory=/opt/ansible-dashboard/worker
-ExecStart=/usr/bin/node /opt/ansible-dashboard/worker/worker.js
+EnvironmentFile=/opt/ansible-dashboard/worker/.env
+ExecStart=/usr/bin/node --env-file /opt/ansible-dashboard/worker/.env /opt/ansible-dashboard/worker/worker.js
 Restart=always
 RestartSec=5
 Environment=NODE_ENV=production

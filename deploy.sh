@@ -187,7 +187,8 @@ Type=simple
 User=ansible
 Group=ansible
 WorkingDirectory=${WORKER_DIR}
-ExecStart=/usr/bin/node ${WORKER_DIR}/worker.js
+EnvironmentFile=${WORKER_DIR}/.env
+ExecStart=/usr/bin/node --env-file ${WORKER_DIR}/.env ${WORKER_DIR}/worker.js
 Restart=always
 RestartSec=5
 Environment=NODE_ENV=production

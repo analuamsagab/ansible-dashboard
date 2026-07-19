@@ -35,6 +35,7 @@ DROP POLICY IF EXISTS "users_manage_own_jobs" ON ansible_jobs;
 
 -- playbooks
 DROP POLICY IF EXISTS "users_manage_own_playbooks" ON playbooks;
+DROP POLICY IF EXISTS "users_insert_own_playbooks" ON playbooks;
 DROP POLICY IF EXISTS "users_update_own_playbooks" ON playbooks;
 DROP POLICY IF EXISTS "users_delete_own_playbooks" ON playbooks;
 DROP POLICY IF EXISTS "read_playbooks" ON playbooks;
@@ -115,3 +116,21 @@ CREATE POLICY "read_job_logs" ON job_logs
       AND (aj.user_id = auth.uid() OR public.is_admin())
     )
   );
+
+-- 9. Enable Realtime publication for worker subscriptions
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND tablename = 'ansible_jobs'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE ansible_jobs;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND tablename = 'job_logs'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE job_logs;
+  END IF;
+END $$;

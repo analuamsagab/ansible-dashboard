@@ -1,3 +1,4 @@
+import 'dotenv/config'
 import { spawn } from 'node:child_process'
 import { writeFileSync, unlinkSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
