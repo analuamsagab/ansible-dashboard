@@ -106,7 +106,7 @@ else
     log "Installing worker dependencies + Ansible..."
     cd "$WORKER_DIR"
     npm install
-    apt install -y ansible
+    apt install -y ansible sshpass
     WORKER_SERVICE="ansible-worker"
 fi
 

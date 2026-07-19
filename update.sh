@@ -53,7 +53,11 @@ else
     # Check if Ansible needs update
     if ! command -v ansible-playbook &>/dev/null; then
         log "Installing Ansible..."
-        apt install -y ansible
+        apt install -y ansible sshpass
+    fi
+    if ! command -v sshpass &>/dev/null; then
+        log "Installing sshpass..."
+        apt install -y sshpass
     fi
 
     log "Restarting worker service..."
