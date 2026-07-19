@@ -12,9 +12,9 @@ WORKER_DIR="${APP_DIR}/worker"
 NGINX_CONF="/etc/nginx/sites-available/ansible-dashboard"
 DOMAIN="${DOMAIN:-ansible.example.com}"
 NODE_VERSION="20"
-SUPABASE_URL="https://eovfjrskpqbikzglkmdl.supabase.co"
-SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVvdmZqcnNrcHFiaWt6Z2xrbWRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ0MTY5NjcsImV4cCI6MjA5OTk5Mjk2N30.BEssyHHgVrPLHKJVRBFS-vru4d7NjAiRcDFHZVTDMYo"
-SUPABASE_SERVICE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVvdmZqcnNrcHFiaWt6Z2xrbWRsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDQxNjk2NywiZXhwIjoyMDk5OTkyOTY3fQ.Gek-hdibSj6xe41CFeR5SgU_L2uZ2kXCPHzjL3N2HmQ"
+SUPABASE_URL="https://example.supabase.co"
+SUPABASE_ANON_KEY="YOUR_ANON_KEY"
+SUPABASE_SERVICE_KEY="YOUR_SERVICE_KEY"
 USE_DOCKER="${USE_DOCKER:-false}"
 
 # --- Colors ---
