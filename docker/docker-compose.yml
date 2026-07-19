@@ -1,0 +1,29 @@
+services:
+  frontend:
+    build:
+      context: ../
+      dockerfile: docker/frontend/Dockerfile
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:?error}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:?error}
+    ports:
+      - "80:80"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  worker:
+    build:
+      context: ../worker
+      dockerfile: Dockerfile
+    env_file:
+      - ../worker/.env
+    volumes:
+      - ansible-temp:/tmp/ansible
+    restart: unless-stopped
+
+volumes:
+  ansible-temp:
