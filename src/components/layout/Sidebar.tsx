@@ -37,9 +37,11 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
       animate={{ width: collapsed ? 64 : 240 }}
       className="bg-gray-900/90 backdrop-blur-sm border-r border-gray-800 flex flex-col h-full shrink-0 overflow-hidden"
     >
-      <div className="flex items-center justify-between p-4 border-b border-gray-800">
+      <div className="flex items-center p-4 border-b border-gray-800">
         {collapsed ? (
-          <img src="/ansible-dashboard.webp" alt="logo" className="w-8 h-8 rounded shrink-0" />
+          <div className="flex justify-center w-full">
+            <img src="/ansible-dashboard.webp" alt="logo" className="w-8 h-8 rounded shrink-0" />
+          </div>
         ) : (
           <motion.div
             initial={{ opacity: 0 }}
@@ -50,12 +52,6 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
             <span className="text-sm font-bold text-emerald-400 truncate">Ansible Dashboard</span>
           </motion.div>
         )}
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-400 hover:text-gray-200 transition-colors"
-        >
-          <ChevronLeft className={`w-4 h-4 transition-transform ${collapsed ? 'rotate-180' : ''}`} />
-        </button>
       </div>
 
       <nav className="flex-1 p-2 space-y-1">
@@ -87,6 +83,23 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
       </nav>
 
       <div className="p-2 border-t border-gray-800 space-y-1">
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:text-gray-200 hover:bg-gray-800/50 transition-all"
+        >
+          <ChevronLeft className={`w-4.5 h-4.5 min-w-[18px] transition-transform ${collapsed ? 'rotate-180' : ''}`} />
+          <AnimatePresence>
+            {!collapsed && (
+              <motion.span
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                Collapse
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </button>
         <div className="flex items-center gap-2 px-3 py-2">
           <div className="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
             <span className="text-xs font-medium text-emerald-400">
