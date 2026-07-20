@@ -63,7 +63,7 @@ if [[ -d "$APP_DIR/.git" ]]; then
     git pull origin main
 else
     log "Cloning repository..."
-    git clone <your-repo-url> "$APP_DIR"
+    git clone https://github.com/analuamsagab/ansible-dashboard "$APP_DIR"
 fi
 cd "$APP_DIR"
 
