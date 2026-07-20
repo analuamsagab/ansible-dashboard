@@ -11,6 +11,7 @@ interface LogLine {
 export function useRealtimeLogs(jobId: string | null) {
   const [logs, setLogs] = useState<LogLine[]>([])
   const [connected, setConnected] = useState(false)
+  const [status, setStatus] = useState<string | null>(null)
   const wsRef = useRef<WebSocket | null>(null)
 
   useEffect(() => {
@@ -39,7 +40,7 @@ export function useRealtimeLogs(jobId: string | null) {
         if (msg.type === 'log' && msg.jobId === jobId) {
           setLogs((prev) => [...prev, msg.data])
         } else if (msg.type === 'status' && msg.jobId === jobId) {
-          // status handled by Dashboard via push from parent
+          setStatus(msg.status)
         }
       } catch { }
     }
@@ -62,5 +63,5 @@ export function useRealtimeLogs(jobId: string | null) {
     }
   }, [jobId])
 
-  return { logs, connected }
+  return { logs, connected, status }
 }

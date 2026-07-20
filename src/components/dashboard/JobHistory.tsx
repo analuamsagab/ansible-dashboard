@@ -4,11 +4,14 @@ import { motion } from 'framer-motion'
 import { StatusBadge } from '../ui/StatusBadge'
 import { TableSkeleton } from '../ui/Skeleton'
 import { Search, Clock } from 'lucide-react'
+import { JobDetailModal } from './JobDetailModal'
 
 interface Job {
   id: string
   status: string
   created_at: string
+  started_at: string | null
+  finished_at: string | null
   server_id: string
   playbook_id: string
   target_servers: { friendly_name: string } | null
@@ -24,6 +27,7 @@ export function JobHistory({ onSelectJob }: JobHistoryProps) {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null)
 
   useEffect(() => {
     api.getJobs()
@@ -40,6 +44,10 @@ export function JobHistory({ onSelectJob }: JobHistoryProps) {
     const matchesStatus = !filterStatus || j.status === filterStatus
     return matchesSearch && matchesStatus
   })
+
+  const handleClick = (job: Job) => {
+    setSelectedJob(job)
+  }
 
   return (
     <div className="space-y-3">
@@ -82,7 +90,7 @@ export function JobHistory({ onSelectJob }: JobHistoryProps) {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.03 }}
-              onClick={() => onSelectJob(job.id)}
+              onClick={() => handleClick(job)}
               className="flex items-center justify-between p-3 bg-gray-800/50 hover:bg-gray-800 rounded-lg border border-gray-700/50 cursor-pointer transition-all"
             >
               <div className="flex items-center gap-3 min-w-0">
@@ -104,6 +112,8 @@ export function JobHistory({ onSelectJob }: JobHistoryProps) {
           ))}
         </div>
       )}
+
+      <JobDetailModal job={selectedJob} onClose={() => setSelectedJob(null)} />
     </div>
   )
 }

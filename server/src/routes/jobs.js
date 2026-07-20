@@ -9,7 +9,8 @@ router.use(authMiddleware)
 router.get('/', (req, res) => {
   const jobs = db.prepare(`
     SELECT
-      j.id, j.status, j.created_at, j.server_id, j.playbook_id,
+      j.id, j.status, j.created_at, j.started_at, j.finished_at,
+      j.server_id, j.playbook_id,
       s.friendly_name AS server_name,
       p.name AS playbook_name
     FROM ansible_jobs j
@@ -24,6 +25,8 @@ router.get('/', (req, res) => {
     id: j.id,
     status: j.status,
     created_at: j.created_at,
+    started_at: j.started_at,
+    finished_at: j.finished_at,
     server_id: j.server_id,
     playbook_id: j.playbook_id,
     target_servers: j.server_name ? { friendly_name: j.server_name } : null,
