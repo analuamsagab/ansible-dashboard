@@ -15,7 +15,7 @@ fail() { echo -e "${RED}[✗]${NC} $1"; exit 1; }
 log "Pulling latest code..."
 git config --global --add safe.directory "$APP_DIR" 2>/dev/null
 cd "$APP_DIR"
-git pull origin main
+git pull origin sqlite
 [[ $? -eq 0 ]] || fail "Git pull failed"
 
 log "Installing frontend dependencies..."

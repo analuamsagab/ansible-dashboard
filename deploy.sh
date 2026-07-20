@@ -40,7 +40,7 @@ if [[ -d "$APP_DIR/.git" ]]; then
     git pull origin main
 else
     log "Cloning repository..."
-    git clone https://github.com/your-repo/ansible-dashboard-sqlite "$APP_DIR"
+    git clone -b sqlite --single-branch https://github.com/your-repo/ansible-dashboard "$APP_DIR"
 fi
 cd "$APP_DIR"
 
