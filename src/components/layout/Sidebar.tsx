@@ -38,18 +38,18 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
       className="bg-gray-900/90 backdrop-blur-sm border-r border-gray-800 flex flex-col h-full shrink-0 overflow-hidden"
     >
       <div className="flex items-center justify-between p-4 border-b border-gray-800">
-        <AnimatePresence>
-          {!collapsed && (
-            <motion.h1
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="text-sm font-bold text-emerald-400 truncate"
-            >
-              Ansible Dashboard
-            </motion.h1>
-          )}
-        </AnimatePresence>
+        {collapsed ? (
+          <img src="/ansible-dashboard.webp" alt="logo" className="w-5 h-5 rounded shrink-0" />
+        ) : (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex items-center gap-2 min-w-0"
+          >
+            <img src="/ansible-dashboard.webp" alt="logo" className="w-6 h-6 rounded shrink-0" />
+            <span className="text-sm font-bold text-emerald-400 truncate">Ansible Dashboard</span>
+          </motion.div>
+        )}
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-400 hover:text-gray-200 transition-colors"
@@ -87,13 +87,19 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
       </nav>
 
       <div className="p-2 border-t border-gray-800 space-y-1">
-        <div className="flex items-center gap-3 px-3 py-2 text-xs text-gray-500 truncate">
+        <div className="flex items-center gap-2 px-3 py-2">
+          <div className="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
+            <span className="text-xs font-medium text-emerald-400">
+              {user?.email?.charAt(0).toUpperCase() || '?'}
+            </span>
+          </div>
           <AnimatePresence>
             {!collapsed && (
               <motion.span
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
+                className="text-xs text-gray-500 truncate"
               >
                 {user?.email}
               </motion.span>
