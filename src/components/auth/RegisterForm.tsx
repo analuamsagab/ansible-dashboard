@@ -28,8 +28,8 @@ export function RegisterForm({ onRegister }: RegisterFormProps) {
   if (success) {
     return (
       <div className="text-center text-emerald-400 p-4">
-        <p className="text-lg font-medium">Check your email</p>
-        <p className="text-sm text-gray-400 mt-1">We sent a confirmation link to {email}</p>
+        <p className="text-lg font-medium">Registration Successfull</p>
+        <p className="text-sm text-gray-400 mt-1">Go back to login page and login with {email}</p>
       </div>
     )
   }
