@@ -94,6 +94,9 @@ export const api = {
       '/lint', { method: 'POST', body: JSON.stringify({ content }) }
     ),
 
+  detectTemplates: (contentYaml: string) =>
+    req<{ found: string[]; missing: string[] }>('/templates/detect', { method: 'POST', body: JSON.stringify({ content_yaml: contentYaml }) }),
+
   getVaultItems: () =>
     req<{ id: string; name: string; description: string | null; created_at: string }[]>('/vault'),
 

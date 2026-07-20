@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process'
-import { writeFileSync, unlinkSync, mkdtempSync, rmSync } from 'node:fs'
+import { writeFileSync, unlinkSync, mkdtempSync, mkdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import db from './db.js'
@@ -20,6 +20,17 @@ function insertLog(jobId, logLine, stream = 'stdout') {
   ).run(jobId, logLine, stream)
 
   broadcastLog(jobId, { id: info.lastInsertRowid, log_line: logLine, stream, created_at: new Date().toISOString() })
+}
+
+function extractTemplateRefs(yaml) {
+  const refs = []
+  const regex = /^\s+src:\s*(?:templates\/)?(.+)$/gm
+  let m
+  while ((m = regex.exec(yaml)) !== null) {
+    const f = m[1].replace(/["']/g, '').trim()
+    if (f && f.endsWith('.j2')) refs.push(f)
+  }
+  return [...new Set(refs)]
 }
 
 function updateJobStatus(jobId, status) {
@@ -70,6 +81,26 @@ export async function executeJob(job) {
       if (job.vaultPassword) {
         vaultPath = join(tempDir, `vault_pass_${job.id}`)
         writeFileSync(vaultPath, job.vaultPassword, 'utf-8')
+      }
+
+      const templateRefs = extractTemplateRefs(playbook.content_yaml)
+      if (templateRefs.length > 0) {
+        const placeholders = templateRefs.map(() => '?').join(',')
+        const matched = db.prepare(
+          `SELECT filename, content FROM templates WHERE user_id = ? AND filename IN (${placeholders})`
+        ).all(job.user_id, ...templateRefs)
+        if (matched.length > 0) {
+          const templatesDir = join(tempDir, 'templates')
+          mkdirSync(templatesDir, { recursive: true })
+          for (const t of matched) {
+            writeFileSync(join(templatesDir, t.filename), t.content, 'utf-8')
+          }
+          insertLog(job.id, `Templates: ${matched.map(t => t.filename).join(', ')}`, 'system')
+        }
+        const missing = templateRefs.filter(f => !matched.some(t => t.filename === f))
+        for (const f of missing) {
+          insertLog(job.id, `Template "${f}" referenced but not found`, 'stderr')
+        }
       }
 
       const inventoryLines = ['[all]']

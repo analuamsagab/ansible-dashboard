@@ -2,6 +2,17 @@ import { Router } from 'express'
 import db, { genId } from '../db.js'
 import { authMiddleware } from '../auth.js'
 
+function extractTemplateRefs(yaml) {
+  const refs = []
+  const regex = /^\s+src:\s*(?:templates\/)?(.+)$/gm
+  let m
+  while ((m = regex.exec(yaml)) !== null) {
+    const f = m[1].replace(/["']/g, '').trim()
+    if (f && f.endsWith('.j2')) refs.push(f)
+  }
+  return [...new Set(refs)]
+}
+
 const router = Router()
 router.use(authMiddleware)
 
@@ -27,6 +38,23 @@ router.post('/', (req, res) => {
   db.prepare('INSERT INTO templates (id, user_id, name, filename, content) VALUES (?, ?, ?, ?, ?)')
     .run(id, req.user.id, name, filename, content)
   res.json({ id, name, filename })
+})
+
+router.post('/detect', (req, res) => {
+  const { content_yaml } = req.body
+  if (!content_yaml) return res.status(400).json({ error: 'content_yaml required' })
+
+  const refs = extractTemplateRefs(content_yaml)
+  if (refs.length === 0) return res.json({ found: [], missing: [] })
+
+  const placeholders = refs.map(() => '?').join(',')
+  const matched = db.prepare(
+    `SELECT filename FROM templates WHERE user_id = ? AND filename IN (${placeholders})`
+  ).all(req.user.id, ...refs)
+  const matchedNames = matched.map(t => t.filename)
+  const missing = refs.filter(f => !matchedNames.includes(f))
+
+  res.json({ found: matchedNames, missing })
 })
 
 router.put('/:id', (req, res) => {

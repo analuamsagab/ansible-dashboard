@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { api } from '../../lib/api'
 import { motion } from 'framer-motion'
-import { Upload, ScrollText, Lock } from 'lucide-react'
+import { Upload, ScrollText, Lock, FileText, AlertTriangle } from 'lucide-react'
 
 interface Playbook {
   id: string
@@ -24,12 +24,26 @@ export function PlaybookDeploy({ serverIds, serverNames, onJobCreated }: Playboo
   const [deploySuccess, setDeploySuccess] = useState<string | null>(null)
   const [useVault, setUseVault] = useState(false)
   const [vaultPassword, setVaultPassword] = useState('')
+  const [templateStatus, setTemplateStatus] = useState<{ found: string[]; missing: string[] } | null>(null)
+  const [detecting, setDetecting] = useState(false)
 
   useEffect(() => {
     api.getPlaybooks().then((data) => {
       if (data) setPlaybooks(data)
     }).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (!selectedPlaybookId) { setTemplateStatus(null); return }
+    const playbook = playbooks.find(p => p.id === selectedPlaybookId)
+    if (!playbook) { setTemplateStatus(null); return }
+    setTemplateStatus(null)
+    setDetecting(true)
+    api.detectTemplates(playbook.content_yaml)
+      .then(setTemplateStatus)
+      .catch(() => setTemplateStatus(null))
+      .finally(() => setDetecting(false))
+  }, [selectedPlaybookId, playbooks])
 
   const handleDeploy = async () => {
     if (serverIds.length === 0 || !selectedPlaybookId) return
@@ -84,6 +98,30 @@ export function PlaybookDeploy({ serverIds, serverNames, onJobCreated }: Playboo
           )}
           <pre className="text-xs text-gray-400 overflow-x-auto max-h-32">{selectedPlaybook.content_yaml.slice(0, 300)}</pre>
         </motion.div>
+      )}
+
+      {detecting && (
+        <div className="flex items-center gap-2 text-xs text-gray-500">
+          <motion.span animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="inline-block w-3 h-3 border-2 border-gray-500 border-t-transparent rounded-full" />
+          Detecting templates...
+        </div>
+      )}
+
+      {templateStatus && !detecting && (
+        <div className="space-y-1">
+          {templateStatus.found.length > 0 && (
+            <div className="flex items-center gap-1.5 text-xs text-emerald-400">
+              <FileText className="w-3 h-3" />
+              <span>{templateStatus.found.length} template{templateStatus.found.length > 1 ? 's' : ''}: {templateStatus.found.join(', ')}</span>
+            </div>
+          )}
+          {templateStatus.missing.length > 0 && (
+            <div className="flex items-center gap-1.5 text-xs text-yellow-300">
+              <AlertTriangle className="w-3 h-3" />
+              <span>Missing: {templateStatus.missing.join(', ')}</span>
+            </div>
+          )}
+        </div>
       )}
 
       {serverIds.length > 1 && (
