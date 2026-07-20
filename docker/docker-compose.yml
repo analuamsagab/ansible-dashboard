@@ -1,5 +1,6 @@
 services:
   frontend:
+    container_name: ansible-dashboard-fe
     build:
       context: ../
       dockerfile: docker/frontend/Dockerfile
@@ -16,6 +17,7 @@ services:
       retries: 3
 
   worker:
+    container_name: ansible-dashboard-worker
     build:
       context: ../worker
       dockerfile: Dockerfile
