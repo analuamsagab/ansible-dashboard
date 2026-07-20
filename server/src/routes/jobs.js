@@ -32,7 +32,7 @@ router.get('/', (req, res) => {
 })
 
 router.post('/', (req, res) => {
-  const { serverId, playbookId } = req.body
+  const { serverId, playbookId, vaultPassword } = req.body
   if (!serverId || !playbookId) return res.status(400).json({ error: 'serverId and playbookId required' })
 
   const server = db.prepare('SELECT id, user_id FROM target_servers WHERE id = ?').get(serverId)
@@ -47,7 +47,7 @@ router.post('/', (req, res) => {
     VALUES (?, ?, ?, ?, 'pending')
   `).run(id, req.user.id, serverId, playbookId)
 
-  const job = { id, user_id: req.user.id, server_id: serverId, playbook_id: playbookId, status: 'pending' }
+  const job = { id, user_id: req.user.id, server_id: serverId, playbook_id: playbookId, status: 'pending', vaultPassword: vaultPassword || null }
 
   executeJob(job)
 

@@ -55,6 +55,7 @@ export async function executeJob(job) {
     const tempDir = mkdtempSync(join(tmpdir(), 'ansible-'))
     const playbookPath = join(tempDir, `playbook_${job.id}.yml`)
     const sshKeyPath = join(tempDir, `ssh_key_${job.id}`)
+    let vaultPath = null
 
     try {
       writeFileSync(playbookPath, playbook.content_yaml, 'utf-8')
@@ -63,16 +64,24 @@ export async function executeJob(job) {
         writeFileSync(sshKeyPath, server.encrypted_ssh_key, 'utf-8')
       }
 
+      if (job.vaultPassword) {
+        vaultPath = join(tempDir, `vault_pass_${job.id}`)
+        writeFileSync(vaultPath, job.vaultPassword, 'utf-8')
+      }
+
       const inventory = `${server.ip_address},`
       const env = { ...process.env, ANSIBLE_HOST_KEY_CHECKING: 'False' }
 
-      const child = spawn('ansible-playbook', [
+      const args = [
         '-i', inventory,
         '-u', server.ssh_user,
         ...(server.encrypted_ssh_key ? ['--private-key', sshKeyPath] : []),
         ...(server.encrypted_ssh_password ? ['--ask-pass'] : []),
+        ...(vaultPath ? ['--vault-password-file', vaultPath] : []),
         playbookPath,
-      ], { env, stdio: ['pipe', 'pipe', 'pipe'] })
+      ]
+
+      const child = spawn('ansible-playbook', args, { env, stdio: ['pipe', 'pipe', 'pipe'] })
 
       if (server.encrypted_ssh_password) {
         child.stdin.write(server.encrypted_ssh_password + '\n')
@@ -121,6 +130,7 @@ export async function executeJob(job) {
     } finally {
       try { unlinkSync(playbookPath) } catch {}
       try { unlinkSync(sshKeyPath) } catch {}
+      if (vaultPath) try { unlinkSync(vaultPath) } catch {}
       try { rmSync(tempDir, { recursive: true, force: true }) } catch {}
     }
   } catch (err) {

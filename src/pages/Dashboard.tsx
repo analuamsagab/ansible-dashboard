@@ -6,6 +6,7 @@ import { DashboardOverview } from '../components/dashboard/DashboardOverview'
 import { ServerManager } from '../components/dashboard/ServerManager'
 import { PlaybookManager } from '../components/dashboard/PlaybookManager'
 import { TemplateManager } from '../components/dashboard/TemplateManager'
+import { VaultManager } from '../components/dashboard/VaultManager'
 import { LintResults } from '../components/dashboard/LintResults'
 import { PlaybookDeploy } from '../components/dashboard/PlaybookDeploy'
 import { TerminalView } from '../components/dashboard/TerminalView'
@@ -110,6 +111,14 @@ export function DashboardPage() {
           <motion.div key="templates" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <div className="bg-gray-900/80 backdrop-blur-sm rounded-xl border border-gray-800 p-4 max-w-2xl">
               <TemplateManager />
+            </div>
+          </motion.div>
+        )
+      case 'vault':
+        return (
+          <motion.div key="vault" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <div className="bg-gray-900/80 backdrop-blur-sm rounded-xl border border-gray-800 p-4 max-w-2xl">
+              <VaultManager />
             </div>
           </motion.div>
         )

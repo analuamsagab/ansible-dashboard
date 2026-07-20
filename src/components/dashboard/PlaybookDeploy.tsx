@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { api } from '../../lib/api'
 import { motion } from 'framer-motion'
-import { Upload, ScrollText } from 'lucide-react'
+import { Upload, ScrollText, Lock } from 'lucide-react'
 
 interface Playbook {
   id: string
@@ -22,6 +22,8 @@ export function PlaybookDeploy({ serverId, serverName, onJobCreated }: PlaybookD
   const [deploying, setDeploying] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [deploySuccess, setDeploySuccess] = useState<string | null>(null)
+  const [useVault, setUseVault] = useState(false)
+  const [vaultPassword, setVaultPassword] = useState('')
 
   useEffect(() => {
     api.getPlaybooks().then((data) => {
@@ -36,7 +38,7 @@ export function PlaybookDeploy({ serverId, serverName, onJobCreated }: PlaybookD
     setDeploying(true)
 
     try {
-      const job = await api.deployJob(serverId, selectedPlaybookId)
+      const job = await api.deployJob(serverId, selectedPlaybookId, useVault ? vaultPassword : undefined)
       onJobCreated(job.id)
       setDeploySuccess('Job deployed successfully')
     } catch (err: unknown) {
@@ -75,6 +77,36 @@ export function PlaybookDeploy({ serverId, serverName, onJobCreated }: PlaybookD
             <p className="text-sm text-gray-300 mb-2">{selectedPlaybook.description}</p>
           )}
           <pre className="text-xs text-gray-400 overflow-x-auto max-h-32">{selectedPlaybook.content_yaml.slice(0, 300)}</pre>
+        </motion.div>
+      )}
+
+      <div className="flex items-center gap-2 pt-1">
+        <button
+          type="button"
+          onClick={() => { setUseVault(!useVault); if (!useVault) setVaultPassword('') }}
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md transition-all ${
+            useVault
+              ? 'bg-yellow-500/10 text-yellow-300 border border-yellow-500/20'
+              : 'bg-gray-800 text-gray-500 border border-gray-700 hover:text-gray-400'
+          }`}
+        >
+          <Lock className="w-3 h-3" />
+          Use Vault
+        </button>
+      </div>
+
+      {useVault && (
+        <motion.div
+          initial={{ opacity: 0, y: -5 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <input
+            value={vaultPassword}
+            onChange={(e) => setVaultPassword(e.target.value)}
+            type="password"
+            placeholder="Enter vault password"
+            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-200 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none placeholder-gray-500"
+          />
         </motion.div>
       )}
 

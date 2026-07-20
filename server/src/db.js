@@ -83,6 +83,17 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_templates_user ON templates(user_id);
+
+  CREATE TABLE IF NOT EXISTS vault_items (
+    id                TEXT PRIMARY KEY,
+    user_id           TEXT NOT NULL REFERENCES users(id),
+    name              TEXT NOT NULL,
+    description       TEXT,
+    encrypted_content TEXT NOT NULL,
+    created_at        DATETIME DEFAULT (datetime('now'))
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_vault_user ON vault_items(user_id);
 `)
 
 export default db

@@ -63,8 +63,8 @@ export const api = {
   getJobs: () =>
     req<{ id: string; status: string; created_at: string; server_id: string; playbook_id: string; target_servers: { friendly_name: string } | null; playbooks: { name: string } | null }[]>('/jobs'),
 
-  deployJob: (serverId: string, playbookId: string) =>
-    req<{ id: string }>('/jobs', { method: 'POST', body: JSON.stringify({ serverId, playbookId }) }),
+  deployJob: (serverId: string, playbookId: string, vaultPassword?: string) =>
+    req<{ id: string }>('/jobs', { method: 'POST', body: JSON.stringify({ serverId, playbookId, vaultPassword }) }),
 
   getStats: () =>
     req<{ servers: number; jobsTotal: number; jobsSuccess: number; jobsFailed: number }>('/stats'),
@@ -90,6 +90,27 @@ export const api = {
     req<{ issues: { line: number; column: number; severity: string; message: string; tag: string }[] }>(
       '/lint', { method: 'POST', body: JSON.stringify({ content }) }
     ),
+
+  getVaultItems: () =>
+    req<{ id: string; name: string; description: string | null; created_at: string }[]>('/vault'),
+
+  getVaultItem: (id: string) =>
+    req<{ id: string; name: string; description: string | null; encrypted_content: string; created_at: string }>('/vault/' + id),
+
+  createVaultItem: (data: { name: string; description?: string; content: string; vaultPassword: string }) =>
+    req<{ id: string }>('/vault', { method: 'POST', body: JSON.stringify(data) }),
+
+  decryptVaultItem: (id: string, vaultPassword: string) =>
+    req<{ content: string }>('/vault/decrypt', { method: 'POST', body: JSON.stringify({ id, vaultPassword }) }),
+
+  rekeyVaultItem: (id: string, oldPassword: string, newPassword: string) =>
+    req<{ success: boolean }>('/vault/rekey', { method: 'POST', body: JSON.stringify({ id, oldPassword, newPassword }) }),
+
+  updateVaultItem: (id: string, data: { name: string; description?: string; content?: string; vaultPassword?: string }) =>
+    req<{ success: boolean }>('/vault/' + id, { method: 'PUT', body: JSON.stringify(data) }),
+
+  deleteVaultItem: (id: string) =>
+    req<{ success: boolean }>('/vault/' + id, { method: 'DELETE' }),
 }
 
 export { setToken, token }

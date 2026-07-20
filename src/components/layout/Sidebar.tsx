@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, Server, ScrollText, Terminal, PlusCircle,
-  ChevronLeft, LogOut, Menu, FileText, CheckSquare,
+  ChevronLeft, LogOut, Menu, FileText, CheckSquare, Lock,
 } from 'lucide-react'
 
 const navItems = [
@@ -12,6 +12,7 @@ const navItems = [
   { id: 'servers',   label: 'Servers',      icon: Server },
   { id: 'playbooks', label: 'Playbooks',    icon: ScrollText },
   { id: 'templates', label: 'Templates',    icon: FileText },
+  { id: 'vault',     label: 'Vault',        icon: Lock },
   { id: 'lint',      label: 'Lint',         icon: CheckSquare },
   { id: 'jobs',      label: 'Job History',  icon: Terminal },
 ]
