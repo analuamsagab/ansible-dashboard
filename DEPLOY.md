@@ -26,10 +26,10 @@ ufw --force enable
 
 ---
 
-## 2. Install Node.js 20.x
+## 2. Install Node.js 22.x
 
 ```bash
-curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
 apt install -y nodejs
 node -v
 npm -v

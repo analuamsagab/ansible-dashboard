@@ -11,7 +11,7 @@ APP_DIR="/opt/ansible-dashboard"
 WORKER_DIR="${APP_DIR}/worker"
 NGINX_CONF="/etc/nginx/sites-available/ansible-dashboard"
 DOMAIN="${DOMAIN:-ansible.example.com}"
-NODE_VERSION="20"
+NODE_VERSION="22"
 SUPABASE_URL="https://example.supabase.co"
 SUPABASE_ANON_KEY="YOUR_ANON_KEY"
 SUPABASE_SERVICE_KEY="YOUR_SERVICE_KEY"
@@ -47,7 +47,7 @@ ufw allow 'Nginx Full'
 ufw --force enable
 
 # --- Step 3: Node.js ---
-if ! command -v node &>/dev/null || [[ "$(node -v | cut -d. -f1 | tr -d v)" -lt 20 ]]; then
+if ! command -v node &>/dev/null || [[ "$(node -v | cut -d. -f1 | tr -d v)" -lt 22 ]]; then
     log "Installing Node.js ${NODE_VERSION}..."
     curl -fsSL "https://deb.nodesource.com/setup_${NODE_VERSION}.x" | bash -
     apt install -y nodejs
