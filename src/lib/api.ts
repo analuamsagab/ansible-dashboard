@@ -57,6 +57,9 @@ export const api = {
   createPlaybook: (data: Record<string, unknown>) =>
     req('/playbooks', { method: 'POST', body: JSON.stringify(data) }),
 
+  updatePlaybook: (id: string, data: { name?: string; description?: string; content_yaml?: string }) =>
+    req<{ success: boolean }>(`/playbooks/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+
   deletePlaybook: (id: string) =>
     req<{ success: boolean }>(`/playbooks/${id}`, { method: 'DELETE' }),
 

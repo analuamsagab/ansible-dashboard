@@ -93,7 +93,7 @@ export function DashboardPage() {
       case 'servers':
         return (
           <motion.div key="servers" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <div className="bg-gray-900/80 backdrop-blur-sm rounded-xl border border-gray-800 p-4 max-w-lg">
+            <div className="bg-gray-900/80 backdrop-blur-sm rounded-xl border border-gray-800 p-4 w-full">
               <ServerManager />
             </div>
           </motion.div>
@@ -101,7 +101,7 @@ export function DashboardPage() {
       case 'playbooks':
         return (
           <motion.div key="playbooks" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <div className="bg-gray-900/80 backdrop-blur-sm rounded-xl border border-gray-800 p-4 max-w-2xl">
+            <div className="bg-gray-900/80 backdrop-blur-sm rounded-xl border border-gray-800 p-4 w-full">
               <PlaybookManager />
             </div>
           </motion.div>
@@ -109,7 +109,7 @@ export function DashboardPage() {
       case 'templates':
         return (
           <motion.div key="templates" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <div className="bg-gray-900/80 backdrop-blur-sm rounded-xl border border-gray-800 p-4 max-w-2xl">
+            <div className="bg-gray-900/80 backdrop-blur-sm rounded-xl border border-gray-800 p-4 w-full">
               <TemplateManager />
             </div>
           </motion.div>
@@ -117,7 +117,7 @@ export function DashboardPage() {
       case 'vault':
         return (
           <motion.div key="vault" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <div className="bg-gray-900/80 backdrop-blur-sm rounded-xl border border-gray-800 p-4 max-w-2xl">
+            <div className="bg-gray-900/80 backdrop-blur-sm rounded-xl border border-gray-800 p-4 w-full">
               <VaultManager />
             </div>
           </motion.div>
@@ -125,7 +125,7 @@ export function DashboardPage() {
       case 'lint':
         return (
           <motion.div key="lint" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <div className="bg-gray-900/80 backdrop-blur-sm rounded-xl border border-gray-800 p-4 max-w-2xl space-y-4">
+            <div className="bg-gray-900/80 backdrop-blur-sm rounded-xl border border-gray-800 p-4 w-full space-y-4">
               <h2 className="text-lg font-semibold text-gray-200 flex items-center gap-2">
                 <CheckSquare className="w-4 h-4 text-emerald-400" />
                 Lint Playbook

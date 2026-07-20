@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { api } from '../../lib/api'
 import { motion } from 'framer-motion'
-import { ScrollText, Upload, Trash2, FileText, Code, CheckSquare } from 'lucide-react'
+import { ScrollText, Upload, Trash2, FileText, Code, CheckSquare, Pencil } from 'lucide-react'
 import { YamlEditor } from './YamlEditor'
 import { LintResults } from './LintResults'
+import { Modal } from '../ui/Modal'
 
 interface Playbook {
   id: string
@@ -29,6 +30,11 @@ export function PlaybookManager() {
 
   const [savedPlaybooks, setSavedPlaybooks] = useState<Playbook[]>([])
   const [loadingSaved, setLoadingSaved] = useState(true)
+
+  const [editTarget, setEditTarget] = useState<Playbook | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editYaml, setEditYaml] = useState('')
+  const [editSaving, setEditSaving] = useState(false)
 
   useEffect(() => {
     if (tab === 'saved') fetchSaved()
@@ -97,6 +103,23 @@ export function PlaybookManager() {
     } catch (err: unknown) {
       setSavedLintIssues(prev => ({ ...prev, [playbookId]: { issues: null, error: (err as Error).message } }))
     }
+  }
+
+  const handleEditStart = (p: Playbook) => {
+    setEditTarget(p)
+    setEditName(p.name)
+    setEditYaml(p.content_yaml)
+  }
+
+  const handleSaveEdit = async () => {
+    if (!editTarget || !editName || !editYaml) return
+    setEditSaving(true)
+    try {
+      await api.updatePlaybook(editTarget.id, { name: editName, content_yaml: editYaml })
+      setEditTarget(null)
+      fetchSaved()
+    } catch {}
+    setEditSaving(false)
   }
 
   const handleDelete = async (id: string) => {
@@ -222,6 +245,13 @@ export function PlaybookManager() {
                   </div>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
                     <button
+                      onClick={() => handleEditStart(p)}
+                      className="p-1.5 rounded-lg text-gray-600 hover:text-blue-400 hover:bg-blue-500/10 transition-all"
+                      title="Edit"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button
                       onClick={() => handleLintSaved(p.id, p.content_yaml)}
                       className="p-1.5 rounded-lg text-gray-600 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all"
                       title="Lint"
@@ -261,6 +291,38 @@ export function PlaybookManager() {
           {message.text}
         </motion.p>
       )}
+
+      <Modal open={!!editTarget} title={`Edit: ${editTarget?.name || ''}`} onClose={() => setEditTarget(null)}>
+        <div className="space-y-3">
+          <input
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            placeholder="Playbook name"
+            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-200 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none placeholder-gray-500"
+          />
+          <YamlEditor
+            value={editYaml}
+            onChange={setEditYaml}
+            placeholder="Write your Ansible playbook YAML here..."
+            minHeight="300px"
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={handleSaveEdit}
+              disabled={editSaving || !editName || !editYaml}
+              className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-sm font-medium transition-colors text-white"
+            >
+              {editSaving ? 'Saving...' : 'Save Changes'}
+            </button>
+            <button
+              onClick={() => setEditTarget(null)}
+              className="px-4 py-2 text-sm text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
