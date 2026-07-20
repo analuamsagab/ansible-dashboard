@@ -29,12 +29,10 @@ export function ServerSelector({ selectedIds, onSelect }: ServerSelectorProps) {
   }, [])
 
   const toggleServer = (s: Server) => {
-    if (selectedIds.includes(s.id)) {
-      onSelect(servers.filter(x => selectedIds.filter(id => id !== s.id).some(id2 => x.id === id2)))
-    } else {
-      const updated = servers.filter(x => [...selectedIds, s.id].includes(x.id))
-      onSelect(updated)
-    }
+    const newIds = selectedIds.includes(s.id)
+      ? selectedIds.filter(id => id !== s.id)
+      : [...selectedIds, s.id]
+    onSelect(servers.filter(x => newIds.includes(x.id)))
   }
 
   return (

@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
-import { api } from '../../lib/api'
 import { motion } from 'framer-motion'
 import { Server, Play, CheckCircle, XCircle } from 'lucide-react'
+import { api } from '../../lib/api'
+import { useFetch } from '../../hooks/useFetch'
 import { ServerSelector } from './ServerSelector'
 
 interface Stats {
@@ -17,17 +17,14 @@ interface DashboardOverviewProps {
 }
 
 export function DashboardOverview({ selectedServerIds, onSelectServer }: DashboardOverviewProps) {
-  const [stats, setStats] = useState<Stats>({ servers: 0, jobsTotal: 0, jobsSuccess: 0, jobsFailed: 0 })
+  const { data: stats } = useFetch<Stats>(() => api.getStats(), [])
 
-  useEffect(() => {
-    api.getStats().then(setStats).catch(() => {})
-  }, [])
-
+  const s = stats ?? { servers: 0, jobsTotal: 0, jobsSuccess: 0, jobsFailed: 0 }
   const cards = [
-    { icon: Server, label: 'Servers', value: stats.servers, color: 'text-blue-400', bg: 'bg-blue-500/10' },
-    { icon: Play, label: 'Total Jobs', value: stats.jobsTotal, color: 'text-gray-300', bg: 'bg-gray-500/10' },
-    { icon: CheckCircle, label: 'Successful', value: stats.jobsSuccess, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-    { icon: XCircle, label: 'Failed', value: stats.jobsFailed, color: 'text-red-400', bg: 'bg-red-500/10' },
+    { icon: Server, label: 'Servers', value: s.servers, color: 'text-blue-400', bg: 'bg-blue-500/10' },
+    { icon: Play, label: 'Total Jobs', value: s.jobsTotal, color: 'text-gray-300', bg: 'bg-gray-500/10' },
+    { icon: CheckCircle, label: 'Successful', value: s.jobsSuccess, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+    { icon: XCircle, label: 'Failed', value: s.jobsFailed, color: 'text-red-400', bg: 'bg-red-500/10' },
   ]
 
   return (

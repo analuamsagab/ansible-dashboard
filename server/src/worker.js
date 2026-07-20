@@ -3,6 +3,7 @@ import { writeFileSync, unlinkSync, mkdtempSync, mkdirSync, rmSync } from 'node:
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import db from './db.js'
+import { extractTemplateRefs } from './utils.js'
 
 const JOB_TIMEOUT_MS = parseInt(process.env.JOB_TIMEOUT_MS || '1800000', 10)
 
@@ -20,17 +21,6 @@ function insertLog(jobId, logLine, stream = 'stdout') {
   ).run(jobId, logLine, stream)
 
   broadcastLog(jobId, { id: info.lastInsertRowid, log_line: logLine, stream, created_at: new Date().toISOString() })
-}
-
-function extractTemplateRefs(yaml) {
-  const refs = []
-  const regex = /^\s+src:\s*(?:templates\/)?(.+)$/gm
-  let m
-  while ((m = regex.exec(yaml)) !== null) {
-    const f = m[1].replace(/["']/g, '').trim()
-    if (f && f.endsWith('.j2')) refs.push(f)
-  }
-  return [...new Set(refs)]
 }
 
 function updateJobStatus(jobId, status) {
@@ -196,6 +186,9 @@ export function startWorker() {
 
   setInterval(() => {
     try {
+      const row = db.prepare("SELECT COUNT(*) AS count FROM ansible_jobs WHERE status = 'pending'").get()
+      if (!row || row.count === 0) return
+
       const pending = db.prepare("SELECT * FROM ansible_jobs WHERE status = 'pending'").all()
       for (const job of pending) {
         executeJob(job)
@@ -203,5 +196,5 @@ export function startWorker() {
     } catch (err) {
       console.error('[Worker] Poll error:', err)
     }
-  }, 2000)
+  }, 3000)
 }

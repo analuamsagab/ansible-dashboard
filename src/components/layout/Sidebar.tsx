@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../../context/AuthContext'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard, Server, ScrollText, Terminal, PlusCircle,
-  ChevronLeft, LogOut, Menu, FileText, CheckSquare, Lock,
+  LayoutDashboard, Server, ScrollText, Terminal,
+  ChevronLeft, LogOut, FileText, CheckSquare, Lock,
 } from 'lucide-react'
 
 const navItems = [

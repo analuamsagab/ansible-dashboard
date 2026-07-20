@@ -5,16 +5,10 @@ import { writeFileSync, readFileSync, unlinkSync, mkdtempSync, rmSync } from 'no
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { execSync } from 'node:child_process'
+import { writePasswordFile } from '../utils.js'
 
 const router = Router()
 router.use(authMiddleware)
-
-function writePasswordFile(content) {
-  const dir = mkdtempSync(join(tmpdir(), 'vault-'))
-  const path = join(dir, 'password')
-  writeFileSync(path, content, 'utf-8')
-  return { dir, path }
-}
 
 function vaultExec(args) {
   try {

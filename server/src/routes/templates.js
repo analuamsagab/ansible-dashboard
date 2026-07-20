@@ -1,17 +1,7 @@
 import { Router } from 'express'
 import db, { genId } from '../db.js'
 import { authMiddleware } from '../auth.js'
-
-function extractTemplateRefs(yaml) {
-  const refs = []
-  const regex = /^\s+src:\s*(?:templates\/)?(.+)$/gm
-  let m
-  while ((m = regex.exec(yaml)) !== null) {
-    const f = m[1].replace(/["']/g, '').trim()
-    if (f && f.endsWith('.j2')) refs.push(f)
-  }
-  return [...new Set(refs)]
-}
+import { extractTemplateRefs } from '../utils.js'
 
 const router = Router()
 router.use(authMiddleware)

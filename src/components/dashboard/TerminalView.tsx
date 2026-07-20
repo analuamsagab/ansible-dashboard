@@ -3,69 +3,33 @@ import { useRealtimeLogs } from '../../hooks/useRealtimeLogs'
 import { motion } from 'framer-motion'
 import { StatusBadge } from '../ui/StatusBadge'
 import { Terminal, Trash2, Copy, Maximize2, Minimize2 } from 'lucide-react'
+import { parseAnsi } from '../../lib/ansi'
 
 interface TerminalViewProps {
   jobId: string | null
   status: string | null
 }
 
-function parseAnsi(text: string): { text: string; color?: string }[] {
-  const ansiRegex = /\x1b\[(\d+)(;\d+)*m/g
-  const parts: { text: string; color?: string }[] = []
-  let lastIndex = 0
-    let currentColor: string | undefined
-
-
-
-  const colorMap: Record<string, string | undefined> = {
-    '30': 'text-gray-400',
-    '31': 'text-red-400',
-    '32': 'text-emerald-400',
-    '33': 'text-yellow-300',
-    '34': 'text-blue-400',
-    '35': 'text-purple-400',
-    '36': 'text-cyan-400',
-    '37': 'text-gray-200',
-    '90': 'text-gray-500',
-    '91': 'text-red-300',
-    '92': 'text-emerald-300',
-    '93': 'text-yellow-200',
-    '94': 'text-blue-300',
-    '0': undefined,
-  }
-
-  let match: RegExpExecArray | null
-  while ((match = ansiRegex.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push({ text: text.slice(lastIndex, match.index), color: currentColor })
-    }
-    currentColor = colorMap[match[1]] || currentColor
-    lastIndex = match.index + match[0].length
-  }
-  if (lastIndex < text.length) {
-    parts.push({ text: text.slice(lastIndex), color: currentColor })
-  }
-  return parts
-}
-
 export function TerminalView({ jobId, status }: TerminalViewProps) {
   const { logs, connected } = useRealtimeLogs(jobId)
   const bottomRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const clearIndexRef = useRef(0)
   const [fullscreen, setFullscreen] = useState(false)
   const [autoScroll, setAutoScroll] = useState(true)
+  const displayLogs = logs.slice(clearIndexRef.current)
 
   useEffect(() => {
     if (autoScroll) bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [logs, autoScroll])
 
   const handleCopy = () => {
-    const text = logs.map((l) => l.log_line).join('\n')
+    const text = displayLogs.map((l) => l.log_line).join('\n')
     navigator.clipboard.writeText(text)
   }
 
   const handleClear = () => {
-    if (containerRef.current) containerRef.current.innerHTML = ''
+    clearIndexRef.current = logs.length
   }
 
   const handleScroll = () => {
@@ -88,7 +52,7 @@ export function TerminalView({ jobId, status }: TerminalViewProps) {
               {connected ? '● Live' : '○ Disconnected'}
             </span>
           )}
-          {logs.length > 0 && (
+          {displayLogs.length > 0 && (
             <>
               <button onClick={handleCopy} className="p-1.5 rounded text-gray-500 hover:text-gray-300 hover:bg-gray-800 transition-colors">
                 <Copy className="w-3.5 h-3.5" />
@@ -115,13 +79,13 @@ export function TerminalView({ jobId, status }: TerminalViewProps) {
             <Terminal className="w-3.5 h-3.5" />
             Waiting for a job to start...
           </div>
-        ) : logs.length === 0 ? (
+        ) : displayLogs.length === 0 ? (
           <div className="flex items-center gap-2 text-gray-500">
             <motion.span animate={{ opacity: [1, 0.3, 1] }} transition={{ repeat: Infinity, duration: 1.5 }} className="w-1.5 h-1.5 rounded-full bg-gray-500" />
             Waiting for log output...
           </div>
         ) : (
-          logs.map((log) => (
+          displayLogs.map((log) => (
             <div key={log.id} className="whitespace-pre-wrap break-all">
               <span className="text-gray-600 mr-2 select-none">
                 {new Date(log.created_at).toLocaleTimeString()}

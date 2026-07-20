@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { api } from '../../lib/api'
+import { useFetch } from '../../hooks/useFetch'
 import { motion } from 'framer-motion'
 import { Lock, Plus, Trash2, Eye, KeyRound, Copy, Check } from 'lucide-react'
 import { Modal } from '../ui/Modal'
@@ -13,8 +14,6 @@ interface VaultItem {
 }
 
 export function VaultManager() {
-  const [items, setItems] = useState<VaultItem[]>([])
-  const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -35,16 +34,8 @@ export function VaultManager() {
 
   const [copied, setCopied] = useState(false)
 
-  const fetchItems = async () => {
-    setLoading(true)
-    try {
-      const data = await api.getVaultItems()
-      setItems(data)
-    } catch {}
-    setLoading(false)
-  }
-
-  useEffect(() => { fetchItems() }, [])
+  const { data: itemsRaw, loading, refetch } = useFetch<VaultItem[]>(() => api.getVaultItems(), [])
+  const items = itemsRaw ?? []
 
   const handleCreate = async () => {
     if (!name || !content || !vaultPassword) return
@@ -56,7 +47,7 @@ export function VaultManager() {
       setContent('')
       setVaultPassword('')
       setShowForm(false)
-      fetchItems()
+      refetch()
       toast.success('Vault item created')
     } catch (err: unknown) {
       toast.error((err as Error).message)
@@ -96,7 +87,7 @@ export function VaultManager() {
   const handleDelete = async (id: string) => {
     try {
       await api.deleteVaultItem(id)
-      fetchItems()
+      refetch()
       toast.success('Vault item deleted')
     } catch {}
   }

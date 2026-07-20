@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
 import { api } from '../../lib/api'
+import { useFetch } from '../../hooks/useFetch'
 import { motion } from 'framer-motion'
 import { FileText, Upload, Trash2, Pencil, Plus } from 'lucide-react'
 import { Modal } from '../ui/Modal'
@@ -12,8 +13,6 @@ interface Template {
 }
 
 export function TemplateManager() {
-  const [templates, setTemplates] = useState<Template[]>([])
-  const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState('')
   const [filename, setFilename] = useState('')
@@ -30,16 +29,8 @@ export function TemplateManager() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const editFileInputRef = useRef<HTMLInputElement>(null)
 
-  const fetchTemplates = async () => {
-    setLoading(true)
-    try {
-      const data = await api.getTemplates()
-      setTemplates(data)
-    } catch {}
-    setLoading(false)
-  }
-
-  useEffect(() => { fetchTemplates() }, [])
+  const { data: templatesRaw, loading, refetch } = useFetch<Template[]>(() => api.getTemplates(), [])
+  const templates = templatesRaw ?? []
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -62,7 +53,7 @@ export function TemplateManager() {
       setFilename('')
       setContent('')
       setShowForm(false)
-      fetchTemplates()
+      refetch()
     } catch (err: unknown) {
       setError((err as Error).message)
     }
@@ -96,14 +87,14 @@ export function TemplateManager() {
     try {
       await api.updateTemplate(editTarget.id, { name: editName, filename: editFilename, content: editContent })
       setEditTarget(null)
-      fetchTemplates()
+      refetch()
     } catch {}
     setEditSaving(false)
   }
 
   const handleDelete = async (id: string) => {
     await api.deleteTemplate(id)
-    fetchTemplates()
+    refetch()
   }
 
   return (

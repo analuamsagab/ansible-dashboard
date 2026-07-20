@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { api } from '../../lib/api'
+import { useFetch } from '../../hooks/useFetch'
 import { motion } from 'framer-motion'
 import { StatusBadge } from '../ui/StatusBadge'
 import { TableSkeleton } from '../ui/Skeleton'
@@ -24,18 +25,11 @@ interface JobHistoryProps {
 }
 
 export function JobHistory({ onSelectJob }: JobHistoryProps) {
-  const [jobs, setJobs] = useState<Job[]>([])
-  const [loading, setLoading] = useState(true)
+  const { data: jobsRaw, loading } = useFetch<Job[]>(() => api.getJobs(), [])
+  const jobs = jobsRaw ?? []
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
-
-  useEffect(() => {
-    api.getJobs()
-      .then((data) => setJobs(data))
-      .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [])
 
   const filtered = jobs.filter((j) => {
     const serverNames = (j.target_servers || []).map(s => s.friendly_name).join(' ')
