@@ -39,14 +39,14 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
     >
       <div className="flex items-center justify-between p-4 border-b border-gray-800">
         {collapsed ? (
-          <img src="/ansible-dashboard.webp" alt="logo" className="w-5 h-5 rounded shrink-0" />
+          <img src="/ansible-dashboard.webp" alt="logo" className="w-8 h-8 rounded shrink-0" />
         ) : (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="flex items-center gap-2 min-w-0"
           >
-            <img src="/ansible-dashboard.webp" alt="logo" className="w-6 h-6 rounded shrink-0" />
+            <img src="/ansible-dashboard.webp" alt="logo" className="w-10 h-10 rounded shrink-0" />
             <span className="text-sm font-bold text-emerald-400 truncate">Ansible Dashboard</span>
           </motion.div>
         )}
