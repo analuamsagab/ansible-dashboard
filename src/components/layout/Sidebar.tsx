@@ -4,14 +4,16 @@ import { useAuth } from '../../context/AuthContext'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, Server, ScrollText, Terminal, PlusCircle,
-  ChevronLeft, LogOut, Menu,
+  ChevronLeft, LogOut, Menu, FileText, CheckSquare,
 } from 'lucide-react'
 
 const navItems = [
-  { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-  { id: 'servers',  label: 'Servers',  icon: Server },
-  { id: 'playbooks', label: 'Playbooks', icon: ScrollText },
-  { id: 'jobs',     label: 'Job History', icon: Terminal },
+  { id: 'overview',  label: 'Overview',     icon: LayoutDashboard },
+  { id: 'servers',   label: 'Servers',      icon: Server },
+  { id: 'playbooks', label: 'Playbooks',    icon: ScrollText },
+  { id: 'templates', label: 'Templates',    icon: FileText },
+  { id: 'lint',      label: 'Lint',         icon: CheckSquare },
+  { id: 'jobs',      label: 'Job History',  icon: Terminal },
 ]
 
 interface SidebarProps {

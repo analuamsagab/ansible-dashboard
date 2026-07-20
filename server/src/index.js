@@ -7,6 +7,8 @@ import serversRouter from './routes/servers.js'
 import playbooksRouter from './routes/playbooks.js'
 import jobsRouter from './routes/jobs.js'
 import statsRouter from './routes/stats.js'
+import templatesRouter from './routes/templates.js'
+import lintRouter from './routes/lint.js'
 import { setupWebSocket } from './websocket.js'
 import { setBroadcastFns, startWorker } from './worker.js'
 import db from './db.js'
@@ -24,6 +26,8 @@ app.use('/api/servers', serversRouter)
 app.use('/api/playbooks', playbooksRouter)
 app.use('/api/jobs', jobsRouter)
 app.use('/api/stats', statsRouter)
+app.use('/api/templates', templatesRouter)
+app.use('/api/lint', lintRouter)
 
 const wsServer = setupWebSocket(server)
 setBroadcastFns(wsServer.broadcastLog, wsServer.broadcastStatus)

@@ -1,0 +1,46 @@
+import { Router } from 'express'
+import db, { genId } from '../db.js'
+import { authMiddleware } from '../auth.js'
+
+const router = Router()
+router.use(authMiddleware)
+
+router.get('/', (req, res) => {
+  const templates = db.prepare(
+    'SELECT id, name, filename, created_at FROM templates WHERE user_id = ? ORDER BY created_at DESC'
+  ).all(req.user.id)
+  res.json(templates)
+})
+
+router.get('/:id', (req, res) => {
+  const t = db.prepare('SELECT * FROM templates WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id)
+  if (!t) return res.status(404).json({ error: 'Template not found' })
+  res.json(t)
+})
+
+router.post('/', (req, res) => {
+  const { name, filename, content } = req.body
+  if (!name || !filename || content === undefined) {
+    return res.status(400).json({ error: 'name, filename, and content are required' })
+  }
+  const id = genId()
+  db.prepare('INSERT INTO templates (id, user_id, name, filename, content) VALUES (?, ?, ?, ?, ?)')
+    .run(id, req.user.id, name, filename, content)
+  res.json({ id, name, filename })
+})
+
+router.put('/:id', (req, res) => {
+  const existing = db.prepare('SELECT id FROM templates WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id)
+  if (!existing) return res.status(404).json({ error: 'Template not found' })
+  const { name, filename, content } = req.body
+  db.prepare('UPDATE templates SET name = ?, filename = ?, content = ? WHERE id = ? AND user_id = ?')
+    .run(name, filename, content, req.params.id, req.user.id)
+  res.json({ success: true })
+})
+
+router.delete('/:id', (req, res) => {
+  db.prepare('DELETE FROM templates WHERE id = ? AND user_id = ?').run(req.params.id, req.user.id)
+  res.json({ success: true })
+})
+
+export default router

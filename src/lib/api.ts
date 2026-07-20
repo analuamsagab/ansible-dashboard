@@ -70,6 +70,26 @@ export const api = {
     req<{ servers: number; jobsTotal: number; jobsSuccess: number; jobsFailed: number }>('/stats'),
 
   wsUrl: () => BASE.replace(/^http/, 'ws') + '/ws',
+
+  getTemplates: () =>
+    req<{ id: string; name: string; filename: string; created_at: string }[]>('/templates'),
+
+  getTemplate: (id: string) =>
+    req<{ id: string; name: string; filename: string; content: string; created_at: string }>('/templates/' + id),
+
+  createTemplate: (data: { name: string; filename: string; content: string }) =>
+    req<{ id: string }>('/templates', { method: 'POST', body: JSON.stringify(data) }),
+
+  updateTemplate: (id: string, data: { name: string; filename: string; content: string }) =>
+    req<{ success: boolean }>('/templates/' + id, { method: 'PUT', body: JSON.stringify(data) }),
+
+  deleteTemplate: (id: string) =>
+    req<{ success: boolean }>('/templates/' + id, { method: 'DELETE' }),
+
+  lintPlaybook: (content: string) =>
+    req<{ issues: { line: number; column: number; severity: string; message: string; tag: string }[] }>(
+      '/lint', { method: 'POST', body: JSON.stringify({ content }) }
+    ),
 }
 
 export { setToken, token }

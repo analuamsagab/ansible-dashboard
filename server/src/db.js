@@ -72,6 +72,17 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_logs_job_time   ON job_logs(job_id, created_at);
   CREATE INDEX IF NOT EXISTS idx_servers_user    ON target_servers(user_id);
   CREATE INDEX IF NOT EXISTS idx_playbooks_user  ON playbooks(user_id);
+
+  CREATE TABLE IF NOT EXISTS templates (
+    id         TEXT PRIMARY KEY,
+    user_id    TEXT NOT NULL REFERENCES users(id),
+    name       TEXT NOT NULL,
+    filename   TEXT NOT NULL,
+    content    TEXT NOT NULL,
+    created_at DATETIME DEFAULT (datetime('now'))
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_templates_user ON templates(user_id);
 `)
 
 export default db

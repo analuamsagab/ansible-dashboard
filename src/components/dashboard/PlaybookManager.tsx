@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { api } from '../../lib/api'
 import { motion } from 'framer-motion'
-import { ScrollText, Upload, Trash2, FileText, Code } from 'lucide-react'
+import { ScrollText, Upload, Trash2, FileText, Code, CheckSquare } from 'lucide-react'
 import { YamlEditor } from './YamlEditor'
+import { LintResults } from './LintResults'
 
 interface Playbook {
   id: string
@@ -20,6 +21,11 @@ export function PlaybookManager() {
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const [lintIssues, setLintIssues] = useState<{ line: number; column: number; severity: string; message: string; tag: string }[] | null>(null)
+  const [linting, setLinting] = useState(false)
+  const [lintError, setLintError] = useState<string | undefined>()
+  const [savedLintIssues, setSavedLintIssues] = useState<Record<string, { issues: typeof lintIssues; error?: string }>>({})
 
   const [savedPlaybooks, setSavedPlaybooks] = useState<Playbook[]>([])
   const [loadingSaved, setLoadingSaved] = useState(true)
@@ -67,6 +73,30 @@ export function PlaybookManager() {
       setMessage({ type: 'error', text: (err as Error).message })
     }
     setSaving(false)
+  }
+
+  const handleLint = async (content: string) => {
+    setLintIssues(null)
+    setLintError(undefined)
+    if (!content) return
+    setLinting(true)
+    try {
+      const result = await api.lintPlaybook(content)
+      setLintIssues(result.issues)
+    } catch (err: unknown) {
+      setLintError((err as Error).message)
+    }
+    setLinting(false)
+  }
+
+  const handleLintSaved = async (playbookId: string, content: string) => {
+    if (savedLintIssues[playbookId]) return
+    try {
+      const result = await api.lintPlaybook(content)
+      setSavedLintIssues(prev => ({ ...prev, [playbookId]: { issues: result.issues } }))
+    } catch (err: unknown) {
+      setSavedLintIssues(prev => ({ ...prev, [playbookId]: { issues: null, error: (err as Error).message } }))
+    }
   }
 
   const handleDelete = async (id: string) => {
@@ -134,13 +164,29 @@ export function PlaybookManager() {
             placeholder="Write your Ansible playbook YAML here..."
             minHeight="280px"
           />
-          <button
-            onClick={handleSave}
-            disabled={saving || !customYaml}
-            className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition-colors text-white"
-          >
-            {saving ? 'Saving...' : 'Save Playbook'}
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => handleLint(customYaml)}
+              disabled={linting || !customYaml}
+              className="flex items-center justify-center gap-1.5 flex-1 py-2.5 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition-colors text-gray-200"
+            >
+              <CheckSquare className="w-3.5 h-3.5" />
+              {linting ? 'Linting...' : 'Lint'}
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving || !customYaml}
+              className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition-colors text-white"
+            >
+              {saving ? 'Saving...' : 'Save Playbook'}
+            </button>
+          </div>
+          {lintIssues !== null && (
+            <LintResults issues={lintIssues} loading={false} />
+          )}
+          {lintError && (
+            <LintResults issues={[]} error={lintError} />
+          )}
         </motion.div>
       )}
 
@@ -155,32 +201,53 @@ export function PlaybookManager() {
           ) : savedPlaybooks.length === 0 ? (
             <div className="text-center py-6 text-gray-500 text-sm">No saved playbooks yet</div>
           ) : (
-            savedPlaybooks.map((p) => (
-              <motion.div
-                key={p.id}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="group flex items-center justify-between p-3 rounded-lg bg-gray-800/40 border border-gray-700/50 hover:bg-gray-800/70 transition-all"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="p-1.5 rounded-lg bg-gray-700/50">
-                    <FileText className="w-4 h-4 text-gray-400" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-200 truncate">{p.name}</p>
-                    <p className="text-xs text-gray-500 truncate">
-                      {new Date(p.created_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => handleDelete(p.id)}
-                  className="p-1.5 rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"
+            <>
+              {savedPlaybooks.map((p) => (
+                <motion.div
+                  key={p.id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="group flex items-center justify-between p-3 rounded-lg bg-gray-800/40 border border-gray-700/50 hover:bg-gray-800/70 transition-all"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </motion.div>
-            ))
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="p-1.5 rounded-lg bg-gray-700/50">
+                      <FileText className="w-4 h-4 text-gray-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-200 truncate">{p.name}</p>
+                      <p className="text-xs text-gray-500 truncate">
+                        {new Date(p.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                    <button
+                      onClick={() => handleLintSaved(p.id, p.content_yaml)}
+                      className="p-1.5 rounded-lg text-gray-600 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all"
+                      title="Lint"
+                    >
+                      <CheckSquare className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(p.id)}
+                      className="p-1.5 rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </motion.div>
+              ))}
+              {Object.entries(savedLintIssues).map(([id, result]) => {
+                const playbook = savedPlaybooks.find(p => p.id === id)
+                if (!playbook) return null
+                return (
+                  <div key={`lint-${id}`} className="mt-2">
+                    <LintResults issues={result.issues || []} error={result.error} />
+                  </div>
+                )
+              })}
+            </>
           )}
         </motion.div>
       )}
