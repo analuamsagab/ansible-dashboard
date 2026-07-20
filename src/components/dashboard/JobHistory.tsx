@@ -13,8 +13,9 @@ interface Job {
   started_at: string | null
   finished_at: string | null
   server_id: string
+  server_ids: string | null
   playbook_id: string
-  target_servers: { friendly_name: string } | null
+  target_servers: { id: string; friendly_name: string }[] | null
   playbooks: { name: string } | null
 }
 
@@ -37,9 +38,9 @@ export function JobHistory({ onSelectJob }: JobHistoryProps) {
   }, [])
 
   const filtered = jobs.filter((j) => {
-    const serverName = j.target_servers?.friendly_name || ''
+    const serverNames = (j.target_servers || []).map(s => s.friendly_name).join(' ')
     const playbookName = j.playbooks?.name || ''
-    const matchesSearch = serverName.toLowerCase().includes(search.toLowerCase()) ||
+    const matchesSearch = serverNames.toLowerCase().includes(search.toLowerCase()) ||
       playbookName.toLowerCase().includes(search.toLowerCase())
     const matchesStatus = !filterStatus || j.status === filterStatus
     return matchesSearch && matchesStatus
@@ -100,7 +101,7 @@ export function JobHistory({ onSelectJob }: JobHistoryProps) {
                     {job.playbooks?.name || 'Unknown playbook'}
                   </p>
                   <p className="text-xs text-gray-500 truncate">
-                    {job.target_servers?.friendly_name || 'Unknown server'}
+                    {(job.target_servers || []).map(s => s.friendly_name).join(', ') || 'Unknown server'}
                   </p>
                 </div>
               </div>

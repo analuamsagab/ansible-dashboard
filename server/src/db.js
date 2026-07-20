@@ -96,6 +96,8 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_vault_user ON vault_items(user_id);
 `)
 
+try { db.exec("ALTER TABLE ansible_jobs ADD COLUMN server_ids TEXT") } catch {}
+
 export default db
 
 export function genId() {

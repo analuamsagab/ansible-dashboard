@@ -11,12 +11,12 @@ interface Playbook {
 }
 
 interface PlaybookDeployProps {
-  serverId: string | null
-  serverName?: string
+  serverIds: string[]
+  serverNames: string[]
   onJobCreated: (jobId: string) => void
 }
 
-export function PlaybookDeploy({ serverId, serverName, onJobCreated }: PlaybookDeployProps) {
+export function PlaybookDeploy({ serverIds, serverNames, onJobCreated }: PlaybookDeployProps) {
   const [playbooks, setPlaybooks] = useState<Playbook[]>([])
   const [selectedPlaybookId, setSelectedPlaybookId] = useState('')
   const [deploying, setDeploying] = useState(false)
@@ -32,13 +32,13 @@ export function PlaybookDeploy({ serverId, serverName, onJobCreated }: PlaybookD
   }, [])
 
   const handleDeploy = async () => {
-    if (!serverId || !selectedPlaybookId) return
+    if (serverIds.length === 0 || !selectedPlaybookId) return
     setErrorMessage(null)
     setDeploySuccess(null)
     setDeploying(true)
 
     try {
-      const job = await api.deployJob(serverId, selectedPlaybookId, useVault ? vaultPassword : undefined)
+      const job = await api.deployJob(serverIds, selectedPlaybookId, useVault ? vaultPassword : undefined)
       onJobCreated(job.id)
       setDeploySuccess('Job deployed successfully')
     } catch (err: unknown) {
@@ -48,6 +48,12 @@ export function PlaybookDeploy({ serverId, serverName, onJobCreated }: PlaybookD
   }
 
   const selectedPlaybook = playbooks.find((p) => p.id === selectedPlaybookId)
+
+  const deployLabel = () => {
+    if (serverIds.length === 0) return 'Select target servers first'
+    if (serverIds.length === 1) return `Deploy to ${serverNames[0]}`
+    return `Deploy to ${serverNames[0]} + ${serverIds.length - 1} other${serverIds.length - 1 > 1 ? 's' : ''}`
+  }
 
   return (
     <div className="space-y-3">
@@ -78,6 +84,16 @@ export function PlaybookDeploy({ serverId, serverName, onJobCreated }: PlaybookD
           )}
           <pre className="text-xs text-gray-400 overflow-x-auto max-h-32">{selectedPlaybook.content_yaml.slice(0, 300)}</pre>
         </motion.div>
+      )}
+
+      {serverIds.length > 1 && (
+        <div className="flex flex-wrap gap-1.5">
+          {serverNames.map((name, i) => (
+            <span key={i} className="text-[11px] text-gray-500 bg-gray-800/60 px-2 py-0.5 rounded-full">
+              {name}
+            </span>
+          ))}
+        </div>
       )}
 
       <div className="flex items-center gap-2 pt-1">
@@ -119,7 +135,7 @@ export function PlaybookDeploy({ serverId, serverName, onJobCreated }: PlaybookD
 
       <button
         onClick={handleDeploy}
-        disabled={deploying || !serverId || !selectedPlaybookId}
+        disabled={deploying || serverIds.length === 0 || !selectedPlaybookId}
         className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition-colors text-white flex items-center justify-center gap-2"
       >
         {deploying ? (
@@ -130,7 +146,7 @@ export function PlaybookDeploy({ serverId, serverName, onJobCreated }: PlaybookD
         ) : (
           <>
             <Upload className="w-4 h-4" />
-            {!serverId ? 'Select a target server first' : `Deploy to ${serverName || serverId}`}
+            {deployLabel()}
           </>
         )}
       </button>

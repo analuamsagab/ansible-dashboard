@@ -64,10 +64,10 @@ export const api = {
     req<{ success: boolean }>(`/playbooks/${id}`, { method: 'DELETE' }),
 
   getJobs: () =>
-    req<{ id: string; status: string; created_at: string; started_at: string | null; finished_at: string | null; server_id: string; playbook_id: string; target_servers: { friendly_name: string } | null; playbooks: { name: string } | null }[]>('/jobs'),
+    req<{ id: string; status: string; created_at: string; started_at: string | null; finished_at: string | null; server_id: string; server_ids: string | null; playbook_id: string; target_servers: { id: string; friendly_name: string }[] | null; playbooks: { name: string } | null }[]>('/jobs'),
 
-  deployJob: (serverId: string, playbookId: string, vaultPassword?: string) =>
-    req<{ id: string }>('/jobs', { method: 'POST', body: JSON.stringify({ serverId, playbookId, vaultPassword }) }),
+  deployJob: (serverIds: string[], playbookId: string, vaultPassword?: string) =>
+    req<{ id: string }>('/jobs', { method: 'POST', body: JSON.stringify({ serverIds, playbookId, vaultPassword }) }),
 
   getStats: () =>
     req<{ servers: number; jobsTotal: number; jobsSuccess: number; jobsFailed: number }>('/stats'),

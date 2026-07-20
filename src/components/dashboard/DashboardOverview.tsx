@@ -12,11 +12,11 @@ interface Stats {
 }
 
 interface DashboardOverviewProps {
-  selectedServerId: string | null
-  onSelectServer: (server: { id: string; friendly_name: string; ip_address: string; ssh_port: number; ssh_user: string } | null) => void
+  selectedServerIds: string[]
+  onSelectServer: (servers: { id: string; friendly_name: string; ip_address: string; ssh_port: number; ssh_user: string }[]) => void
 }
 
-export function DashboardOverview({ selectedServerId, onSelectServer }: DashboardOverviewProps) {
+export function DashboardOverview({ selectedServerIds, onSelectServer }: DashboardOverviewProps) {
   const [stats, setStats] = useState<Stats>({ servers: 0, jobsTotal: 0, jobsSuccess: 0, jobsFailed: 0 })
 
   useEffect(() => {
@@ -58,7 +58,7 @@ export function DashboardOverview({ selectedServerId, onSelectServer }: Dashboar
         transition={{ delay: 0.3 }}
         className="bg-gray-900/80 backdrop-blur-sm border border-gray-800 rounded-xl p-4"
       >
-        <ServerSelector selectedId={selectedServerId} onSelect={onSelectServer} />
+        <ServerSelector selectedIds={selectedServerIds} onSelect={onSelectServer} />
       </motion.div>
     </div>
   )

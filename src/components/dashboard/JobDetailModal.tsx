@@ -11,8 +11,9 @@ interface JobDetail {
   started_at: string | null
   finished_at: string | null
   server_id: string
+  server_ids: string | null
   playbook_id: string
-  target_servers: { friendly_name: string } | null
+  target_servers: { id: string; friendly_name: string }[] | null
   playbooks: { name: string } | null
 }
 
@@ -127,7 +128,7 @@ export function JobDetailModal({ job, onClose }: JobDetailModalProps) {
                   <span className="text-[10px] uppercase tracking-wider text-gray-500 font-medium flex items-center gap-1">
                     <Server className="w-3 h-3" /> Server
                   </span>
-                  <p className="text-sm text-gray-200 truncate">{job.target_servers?.friendly_name || '-'}</p>
+                  <p className="text-sm text-gray-200 truncate">{(job.target_servers || []).map(s => s.friendly_name).join(', ') || '-'}</p>
                 </div>
                 <div className="space-y-1">
                   <span className="text-[10px] uppercase tracking-wider text-gray-500 font-medium flex items-center gap-1">

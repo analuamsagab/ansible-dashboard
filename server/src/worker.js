@@ -40,53 +40,74 @@ function updateJobStatus(jobId, status) {
 
 export async function executeJob(job) {
   try {
-    const server = db.prepare('SELECT * FROM target_servers WHERE id = ?').get(job.server_id)
+    const serverIds = job.server_ids ? JSON.parse(job.server_ids) : [job.server_id]
+    const placeholders = serverIds.map(() => '?').join(',')
+    const servers = db.prepare(
+      `SELECT * FROM target_servers WHERE id IN (${placeholders})`
+    ).all(...serverIds)
+
     const playbook = db.prepare('SELECT * FROM playbooks WHERE id = ?').get(job.playbook_id)
 
-    if (!playbook?.content_yaml || !server) {
+    if (!playbook?.content_yaml || servers.length === 0) {
       insertLog(job.id, 'Failed to fetch playbook or server data', 'system')
       updateJobStatus(job.id, 'failed')
       return
     }
 
     updateJobStatus(job.id, 'running')
-    insertLog(job.id, `Job started — target: ${server.ssh_user}@${server.ip_address}:${server.ssh_port}`, 'system')
+    const names = servers.map(s => `${s.ssh_user}@${s.ip_address}`).join(', ')
+    insertLog(job.id, `Job started — targets: ${names}`, 'system')
 
     const tempDir = mkdtempSync(join(tmpdir(), 'ansible-'))
     const playbookPath = join(tempDir, `playbook_${job.id}.yml`)
-    const sshKeyPath = join(tempDir, `ssh_key_${job.id}`)
+    const inventoryPath = join(tempDir, `inventory_${job.id}`)
     let vaultPath = null
+    const sshKeyPaths = []
 
     try {
       writeFileSync(playbookPath, playbook.content_yaml, 'utf-8')
-
-      if (server.encrypted_ssh_key) {
-        writeFileSync(sshKeyPath, server.encrypted_ssh_key, 'utf-8')
-      }
 
       if (job.vaultPassword) {
         vaultPath = join(tempDir, `vault_pass_${job.id}`)
         writeFileSync(vaultPath, job.vaultPassword, 'utf-8')
       }
 
-      const inventory = `${server.ip_address},`
+      const inventoryLines = ['[all]']
+      for (const server of servers) {
+        let sshKeyPath = null
+        if (server.encrypted_ssh_key) {
+          sshKeyPath = join(tempDir, `ssh_key_${server.id}`)
+          writeFileSync(sshKeyPath, server.encrypted_ssh_key, 'utf-8')
+          sshKeyPaths.push(sshKeyPath)
+        }
+
+        const hostVars = [
+          `ansible_host=${server.ip_address}`,
+          `ansible_user=${server.ssh_user}`,
+          `ansible_port=${server.ssh_port}`,
+        ]
+        if (sshKeyPath) hostVars.push(`ansible_ssh_private_key_file=${sshKeyPath}`)
+        if (server.encrypted_ssh_password) hostVars.push(`ansible_ssh_pass=${server.encrypted_ssh_password}`)
+        inventoryLines.push(`srv_${server.id} ${hostVars.join(' ')}`)
+      }
+      writeFileSync(inventoryPath, inventoryLines.join('\n'), 'utf-8')
+
       const env = { ...process.env, ANSIBLE_HOST_KEY_CHECKING: 'False' }
 
       const args = [
-        '-i', inventory,
-        '-u', server.ssh_user,
-        ...(server.encrypted_ssh_key ? ['--private-key', sshKeyPath] : []),
-        ...(server.encrypted_ssh_password ? ['--ask-pass'] : []),
+        '-i', inventoryPath,
         ...(vaultPath ? ['--vault-password-file', vaultPath] : []),
         playbookPath,
       ]
 
       const child = spawn('ansible-playbook', args, { env, stdio: ['pipe', 'pipe', 'pipe'] })
 
-      if (server.encrypted_ssh_password) {
-        child.stdin.write(server.encrypted_ssh_password + '\n')
-        child.stdin.end()
+      for (const server of servers) {
+        if (server.encrypted_ssh_password) {
+          child.stdin.write(server.encrypted_ssh_password + '\n')
+        }
       }
+      child.stdin.end()
 
       const timer = setTimeout(() => {
         child.kill('SIGKILL')
@@ -129,7 +150,8 @@ export async function executeJob(job) {
       insertLog(job.id, `Unexpected error: ${err.message}`, 'stderr')
     } finally {
       try { unlinkSync(playbookPath) } catch {}
-      try { unlinkSync(sshKeyPath) } catch {}
+      try { unlinkSync(inventoryPath) } catch {}
+      for (const p of sshKeyPaths) try { unlinkSync(p) } catch {}
       if (vaultPath) try { unlinkSync(vaultPath) } catch {}
       try { rmSync(tempDir, { recursive: true, force: true }) } catch {}
     }

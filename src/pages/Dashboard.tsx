@@ -23,8 +23,7 @@ interface Server {
 export function DashboardPage() {
   const { user } = useAuth()
   const [activeSection, setActiveSection] = useState('overview')
-  const [selectedServerId, setSelectedServerId] = useState<string | null>(null)
-  const [selectedServerName, setSelectedServerName] = useState('')
+  const [selectedServers, setSelectedServers] = useState<Server[]>([])
   const [activeJobId, setActiveJobId] = useState<string | null>(null)
   const [jobStatus, setJobStatus] = useState<string | null>(null)
   const [lintContent, setLintContent] = useState('')
@@ -32,9 +31,8 @@ export function DashboardPage() {
   const [linting, setLinting] = useState(false)
   const [lintError, setLintError] = useState<string | undefined>()
 
-  const handleSelectServer = (server: Server | null) => {
-    setSelectedServerId(server?.id ?? null)
-    setSelectedServerName(server?.friendly_name || '')
+  const handleSelectServer = (servers: Server[]) => {
+    setSelectedServers(servers)
   }
 
   const handleJobCreated = (jobId: string) => {
@@ -73,14 +71,14 @@ export function DashboardPage() {
         return (
           <motion.div key="overview" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
             <DashboardOverview
-              selectedServerId={selectedServerId}
+              selectedServerIds={selectedServers.map(s => s.id)}
               onSelectServer={handleSelectServer}
             />
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <div className="bg-gray-900/80 backdrop-blur-sm rounded-xl border border-gray-800 p-4">
                 <PlaybookDeploy
-                  serverId={selectedServerId}
-                  serverName={selectedServerName}
+                  serverIds={selectedServers.map(s => s.id)}
+                  serverNames={selectedServers.map(s => s.friendly_name)}
                   onJobCreated={handleJobCreated}
                 />
               </div>
@@ -178,10 +176,14 @@ export function DashboardPage() {
         <header className="border-b border-gray-800/50 px-6 py-3 flex items-center justify-between bg-gray-900/30 backdrop-blur-sm">
           <div className="flex items-center gap-3">
             <h1 className="text-lg font-semibold text-gray-100 capitalize">{activeSection}</h1>
-            {selectedServerName && (
-              <span className="text-xs text-gray-500 bg-gray-800 px-2 py-1 rounded-full">
-                Target: {selectedServerName}
-              </span>
+            {selectedServers.length > 0 && (
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {selectedServers.map(s => (
+                  <span key={s.id} className="text-xs text-gray-500 bg-gray-800 px-2 py-1 rounded-full">
+                    {s.friendly_name}
+                  </span>
+                ))}
+              </div>
             )}
           </div>
           <span className="text-sm text-gray-500">{user?.email}</span>
