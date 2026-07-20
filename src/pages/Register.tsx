@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import { RegisterForm } from '../components/auth/RegisterForm'
-import { useAuth } from '../hooks/useAuth'
+import { useAuth } from '../context/AuthContext'
 import { Link } from 'react-router-dom'
 import { Terminal } from 'lucide-react'
 

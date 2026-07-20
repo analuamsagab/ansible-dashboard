@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useAuth } from '../hooks/useAuth'
+import { useAuth } from '../context/AuthContext'
 import { api } from '../lib/api'
 import { Sidebar } from '../components/layout/Sidebar'
 import { DashboardOverview } from '../components/dashboard/DashboardOverview'
