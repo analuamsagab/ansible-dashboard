@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../../lib/supabase'
+import { api } from '../../lib/api'
 import { motion } from 'framer-motion'
 import { StatusBadge } from '../ui/StatusBadge'
 import { TableSkeleton } from '../ui/Skeleton'
@@ -26,15 +26,10 @@ export function JobHistory({ onSelectJob }: JobHistoryProps) {
   const [filterStatus, setFilterStatus] = useState('')
 
   useEffect(() => {
-    supabase
-      .from('ansible_jobs')
-      .select('id, status, created_at, server_id, playbook_id, target_servers(friendly_name), playbooks(name)')
-      .order('created_at', { ascending: false })
-      .limit(50)
-      .then(({ data }) => {
-        if (data) setJobs(data as unknown as Job[])
-        setLoading(false)
-      })
+    api.getJobs()
+      .then((data) => setJobs(data))
+      .catch(() => {})
+      .finally(() => setLoading(false))
   }, [])
 
   const filtered = jobs.filter((j) => {

@@ -8,16 +8,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-COPY package.json package-lock.json ./
+COPY package.json package-lock.json* ./
 RUN npm ci --omit=dev
 
 COPY . .
 
-RUN useradd -m -u 1001 ansible && \
-    chown -R ansible:ansible /app && \
-    mkdir -p /tmp/ansible && \
-    chown -R ansible:ansible /tmp/ansible
+RUN mkdir -p /data && \
+    useradd -m -u 1001 ansible && \
+    chown -R ansible:ansible /data /app
 
 USER ansible
 
-CMD ["node", "worker.js"]
+EXPOSE 3001
+
+CMD ["node", "src/index.js"]

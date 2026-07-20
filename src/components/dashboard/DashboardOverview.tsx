@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../../lib/supabase'
+import { api } from '../../lib/api'
 import { motion } from 'framer-motion'
 import { Server, Play, CheckCircle, XCircle } from 'lucide-react'
 import { ServerSelector } from './ServerSelector'
@@ -20,19 +20,7 @@ export function DashboardOverview({ selectedServerId, onSelectServer }: Dashboar
   const [stats, setStats] = useState<Stats>({ servers: 0, jobsTotal: 0, jobsSuccess: 0, jobsFailed: 0 })
 
   useEffect(() => {
-    Promise.all([
-      supabase.from('target_servers').select('id', { count: 'exact', head: true }),
-      supabase.from('ansible_jobs').select('id', { count: 'exact', head: true }),
-      supabase.from('ansible_jobs').select('id', { count: 'exact', head: true }).eq('status', 'success'),
-      supabase.from('ansible_jobs').select('id', { count: 'exact', head: true }).eq('status', 'failed'),
-    ]).then(([s, t, su, f]) => {
-      setStats({
-        servers: s.count ?? 0,
-        jobsTotal: t.count ?? 0,
-        jobsSuccess: su.count ?? 0,
-        jobsFailed: f.count ?? 0,
-      })
-    })
+    api.getStats().then(setStats).catch(() => {})
   }, [])
 
   const cards = [

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../../lib/supabase'
+import { api } from '../../lib/api'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Server, Plus, Trash2, EthernetPort, User, Key, Lock, Pencil } from 'lucide-react'
 import { CardSkeleton } from '../ui/Skeleton'
@@ -37,11 +37,10 @@ export function ServerManager() {
   const [editSaving, setEditSaving] = useState(false)
 
   const fetchServers = async () => {
-    const { data } = await supabase
-      .from('target_servers')
-      .select('id, friendly_name, ip_address, ssh_port, ssh_user')
-      .order('created_at', { ascending: false })
-    if (data) setServers(data)
+    try {
+      const data = await api.getServers()
+      setServers(data)
+    } catch {}
     setLoading(false)
   }
 
@@ -53,25 +52,27 @@ export function ServerManager() {
     if (!sshKey && !sshPassword) { setErrorMessage('SSH key or password is required'); return }
 
     setLoading(true)
-    const { error } = await supabase.from('target_servers').insert({
-      friendly_name: friendlyName,
-      ip_address: ipAddress,
-      ssh_port: parseInt(sshPort),
-      ssh_user: sshUser,
-      encrypted_ssh_key: sshKey || null,
-      encrypted_ssh_password: sshPassword || null,
-    })
-
-    if (error) { setErrorMessage(error.message); setLoading(false); return }
-
-    setFriendlyName(''); setIpAddress(''); setSshUser('root'); setSshPort('22')
-    setSshKey(''); setSshPassword(''); setShowForm(false); setLoading(false)
-    fetchServers()
+    try {
+      await api.createServer({
+        friendly_name: friendlyName,
+        ip_address: ipAddress,
+        ssh_user: sshUser,
+        ssh_port: parseInt(sshPort),
+        encrypted_ssh_key: sshKey || null,
+        encrypted_ssh_password: sshPassword || null,
+      })
+      setFriendlyName(''); setIpAddress(''); setSshUser('root'); setSshPort('22')
+      setSshKey(''); setSshPassword(''); setShowForm(false)
+      fetchServers()
+    } catch (err: unknown) {
+      setErrorMessage((err as Error).message)
+    }
+    setLoading(false)
   }
 
   const handleDelete = async (id: string) => {
     setDeleting(id)
-    await supabase.from('target_servers').delete().eq('id', id)
+    await api.deleteServer(id)
     setDeleting(null)
     fetchServers()
   }
@@ -93,21 +94,23 @@ export function ServerManager() {
     setEditError(null)
     setEditSaving(true)
 
-    const payload: Record<string, unknown> = {
-      friendly_name: editFriendlyName,
-      ip_address: editIpAddress,
-      ssh_user: editSshUser,
-      ssh_port: parseInt(editSshPort),
+    try {
+      const payload: Record<string, unknown> = {
+        friendly_name: editFriendlyName,
+        ip_address: editIpAddress,
+        ssh_user: editSshUser,
+        ssh_port: parseInt(editSshPort),
+      }
+      if (editSshKey) payload.encrypted_ssh_key = editSshKey
+      if (editSshPassword) payload.encrypted_ssh_password = editSshPassword
+
+      await api.updateServer(editTarget.id, payload)
+      setEditTarget(null)
+      fetchServers()
+    } catch (err: unknown) {
+      setEditError((err as Error).message)
     }
-    if (editSshKey) payload.encrypted_ssh_key = editSshKey
-    if (editSshPassword) payload.encrypted_ssh_password = editSshPassword
-
-    const { error } = await supabase.from('target_servers').update(payload).eq('id', editTarget.id)
-    if (error) { setEditError(error.message); setEditSaving(false); return }
-
     setEditSaving(false)
-    setEditTarget(null)
-    fetchServers()
   }
 
   return (

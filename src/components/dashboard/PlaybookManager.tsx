@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { supabase } from '../../lib/supabase'
+import { api } from '../../lib/api'
 import { motion } from 'framer-motion'
 import { ScrollText, Upload, Trash2, FileText, Code } from 'lucide-react'
 import { YamlEditor } from './YamlEditor'
@@ -30,12 +30,10 @@ export function PlaybookManager() {
 
   const fetchSaved = async () => {
     setLoadingSaved(true)
-    const { data } = await supabase
-      .from('playbooks')
-      .select('id, name, description, content_yaml, is_system_default, created_at')
-      .eq('is_system_default', false)
-      .order('created_at', { ascending: false })
-    if (data) setSavedPlaybooks(data)
+    try {
+      const data = await api.getPlaybooks()
+      setSavedPlaybooks(data.filter(p => !p.is_system_default))
+    } catch {}
     setLoadingSaved(false)
   }
 
@@ -56,24 +54,23 @@ export function PlaybookManager() {
     setMessage(null)
     setSaving(true)
 
-    const { error } = await supabase.from('playbooks').insert({
-      name: customName || 'Untitled Playbook',
-      content_yaml: customYaml,
-      is_system_default: false,
-    })
-
-    if (error) {
-      setMessage({ type: 'error', text: error.message })
-    } else {
+    try {
+      await api.createPlaybook({
+        name: customName || 'Untitled Playbook',
+        content_yaml: customYaml,
+        is_system_default: false,
+      })
       setMessage({ type: 'success', text: 'Playbook saved successfully' })
       setCustomName('')
       setCustomYaml('')
+    } catch (err: unknown) {
+      setMessage({ type: 'error', text: (err as Error).message })
     }
     setSaving(false)
   }
 
   const handleDelete = async (id: string) => {
-    await supabase.from('playbooks').delete().eq('id', id)
+    await api.deletePlaybook(id)
     fetchSaved()
   }
 

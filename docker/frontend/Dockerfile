@@ -1,10 +1,6 @@
-# ============================================================
-# Stage 1: Build frontend with Vite
-# ============================================================
 FROM node:22-alpine AS builder
 
-ARG VITE_SUPABASE_URL
-ARG VITE_SUPABASE_ANON_KEY
+ARG VITE_API_URL
 
 WORKDIR /app
 
@@ -14,9 +10,6 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-# ============================================================
-# Stage 2: Serve with Nginx
-# ============================================================
 FROM nginx:alpine
 
 RUN apk add --no-cache curl

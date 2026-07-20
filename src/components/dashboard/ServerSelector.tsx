@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../../lib/supabase'
+import { api } from '../../lib/api'
 import { motion } from 'framer-motion'
 import { Server, EthernetPort, CheckCircle } from 'lucide-react'
 import { CardSkeleton } from '../ui/Skeleton'
@@ -22,14 +22,10 @@ export function ServerSelector({ selectedId, onSelect }: ServerSelectorProps) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase
-      .from('target_servers')
-      .select('id, friendly_name, ip_address, ssh_port, ssh_user')
-      .order('created_at', { ascending: false })
-      .then(({ data }) => {
-        if (data) setServers(data)
-        setLoading(false)
-      })
+    api.getServers().then((data) => {
+      setServers(data)
+      setLoading(false)
+    }).catch(() => setLoading(false))
   }, [])
 
   return (

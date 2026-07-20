@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../../lib/supabase'
+import { api } from '../../lib/api'
 import { motion } from 'framer-motion'
 import { Upload, ScrollText } from 'lucide-react'
 
@@ -24,13 +24,9 @@ export function PlaybookDeploy({ serverId, serverName, onJobCreated }: PlaybookD
   const [deploySuccess, setDeploySuccess] = useState<string | null>(null)
 
   useEffect(() => {
-    supabase
-      .from('playbooks')
-      .select('id, name, description, content_yaml')
-      .order('created_at', { ascending: false })
-      .then(({ data }) => {
-        if (data) setPlaybooks(data)
-      })
+    api.getPlaybooks().then((data) => {
+      if (data) setPlaybooks(data)
+    }).catch(() => {})
   }, [])
 
   const handleDeploy = async () => {
@@ -39,25 +35,12 @@ export function PlaybookDeploy({ serverId, serverName, onJobCreated }: PlaybookD
     setDeploySuccess(null)
     setDeploying(true)
 
-    const { data: job, error } = await supabase
-      .from('ansible_jobs')
-      .insert({
-        server_id: serverId,
-        playbook_id: selectedPlaybookId,
-        status: 'pending',
-      })
-      .select('id')
-      .single()
-
-    if (error) {
-      setErrorMessage(error.message)
-      setDeploying(false)
-      return
-    }
-
-    if (job) {
+    try {
+      const job = await api.deployJob(serverId, selectedPlaybookId)
       onJobCreated(job.id)
       setDeploySuccess('Job deployed successfully')
+    } catch (err: unknown) {
+      setErrorMessage((err as Error).message)
     }
     setDeploying(false)
   }

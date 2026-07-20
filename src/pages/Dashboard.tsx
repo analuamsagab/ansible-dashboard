@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
-import { supabase } from '../lib/supabase'
+import { api } from '../lib/api'
 import { Sidebar } from '../components/layout/Sidebar'
 import { DashboardOverview } from '../components/dashboard/DashboardOverview'
 import { ServerManager } from '../components/dashboard/ServerManager'
@@ -11,6 +11,11 @@ import { JobHistory } from '../components/dashboard/JobHistory'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Toaster } from 'react-hot-toast'
 
+interface Server {
+  id: string
+  friendly_name: string
+}
+
 export function DashboardPage() {
   const { user } = useAuth()
   const [activeSection, setActiveSection] = useState('overview')
@@ -19,23 +24,10 @@ export function DashboardPage() {
   const [activeJobId, setActiveJobId] = useState<string | null>(null)
   const [jobStatus, setJobStatus] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (!selectedServerId) { setSelectedServerName(''); return }
-    supabase.from('target_servers').select('friendly_name').eq('id', selectedServerId).single()
-      .then(({ data }) => setSelectedServerName(data?.friendly_name || ''))
-  }, [selectedServerId])
-
-  useEffect(() => {
-    if (!activeJobId) return
-    const channel = supabase
-      .channel(`ansible-jobs:${activeJobId}`)
-      .on('postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'ansible_jobs', filter: `id=eq.${activeJobId}` },
-        (payload) => setJobStatus(payload.new.status),
-      )
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
-  }, [activeJobId])
+  const handleSelectServer = (server: Server | null) => {
+    setSelectedServerId(server?.id ?? null)
+    setSelectedServerName(server?.friendly_name || '')
+  }
 
   const handleJobCreated = (jobId: string) => {
     setActiveJobId(jobId)
@@ -49,8 +41,8 @@ export function DashboardPage() {
     setActiveSection('overview')
   }
 
-  const handleSelectServer = (server: { id: string; friendly_name: string } | null) => {
-    setSelectedServerId(server?.id ?? null)
+  const handleStatusChange = (status: string | null) => {
+    setJobStatus(status)
   }
 
   const renderContent = () => {

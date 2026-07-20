@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
+import { useState, useEffect, useRef } from 'react'
+import { api, token } from '../lib/api'
 
 interface LogLine {
   id: number
@@ -11,6 +11,7 @@ interface LogLine {
 export function useRealtimeLogs(jobId: string | null) {
   const [logs, setLogs] = useState<LogLine[]>([])
   const [connected, setConnected] = useState(false)
+  const wsRef = useRef<WebSocket | null>(null)
 
   useEffect(() => {
     if (!jobId) {
@@ -21,26 +22,43 @@ export function useRealtimeLogs(jobId: string | null) {
 
     setLogs([])
 
-    const channel = supabase
-      .channel(`job_logs:${jobId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'job_logs',
-          filter: `job_id=eq.${jobId}`,
-        },
-        (payload) => {
-          setLogs((prev) => [...prev, payload.new as LogLine])
-        },
-      )
-      .subscribe((status) => {
-        setConnected(status === 'SUBSCRIBED')
-      })
+    const t = token()
+    if (!t) return
+
+    const ws = new WebSocket(`${api.wsUrl()}?token=${t}`)
+    wsRef.current = ws
+
+    ws.onopen = () => {
+      setConnected(true)
+      ws.send(JSON.stringify({ type: 'subscribe', jobId }))
+    }
+
+    ws.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data)
+        if (msg.type === 'log' && msg.jobId === jobId) {
+          setLogs((prev) => [...prev, msg.data])
+        } else if (msg.type === 'status' && msg.jobId === jobId) {
+          // status handled by Dashboard via push from parent
+        }
+      } catch { }
+    }
+
+    ws.onclose = () => {
+      setConnected(false)
+      wsRef.current = null
+    }
+
+    ws.onerror = () => {
+      ws.close()
+    }
 
     return () => {
-      supabase.removeChannel(channel)
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'unsubscribe', jobId }))
+        ws.close()
+      }
+      wsRef.current = null
     }
   }, [jobId])
 
