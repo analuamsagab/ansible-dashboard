@@ -48,7 +48,8 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS ansible_jobs (
     id          TEXT PRIMARY KEY,
     user_id     TEXT NOT NULL REFERENCES users(id),
-    server_id   TEXT NOT NULL REFERENCES target_servers(id),
+    server_id   TEXT,
+    server_ids  TEXT,
     playbook_id TEXT NOT NULL REFERENCES playbooks(id),
     status      TEXT NOT NULL DEFAULT 'pending'
                 CHECK (status IN ('pending','running','success','failed','timeout')),
@@ -116,6 +117,42 @@ try {
 } catch {}
 
 try { db.exec("ALTER TABLE ansible_jobs ADD COLUMN server_ids TEXT") } catch {}
+
+try {
+  const fks = db.prepare(
+    "SELECT * FROM pragma_foreign_key_list WHERE `table` = 'ansible_jobs' AND `from` = 'server_id'"
+  ).all()
+  if (fks.length > 0) {
+    db.exec(`PRAGMA foreign_keys = OFF`)
+    db.exec(`
+      CREATE TABLE ansible_jobs_v2 (
+        id          TEXT PRIMARY KEY,
+        user_id     TEXT NOT NULL REFERENCES users(id),
+        server_id   TEXT,
+        server_ids  TEXT,
+        playbook_id TEXT NOT NULL REFERENCES playbooks(id),
+        status      TEXT NOT NULL DEFAULT 'pending'
+                    CHECK (status IN ('pending','running','success','failed','timeout')),
+        started_at  DATETIME,
+        finished_at DATETIME,
+        created_at  DATETIME DEFAULT (datetime('now'))
+      );
+      INSERT INTO ansible_jobs_v2 (id, user_id, server_id, server_ids, playbook_id, status, started_at, finished_at, created_at)
+        SELECT id, user_id, server_id, server_ids, playbook_id, status, started_at, finished_at, created_at FROM ansible_jobs;
+      DROP TABLE ansible_jobs;
+      ALTER TABLE ansible_jobs_v2 RENAME TO ansible_jobs;
+    `)
+    db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_jobs_user_status ON ansible_jobs(user_id, status);
+      CREATE INDEX IF NOT EXISTS idx_jobs_created     ON ansible_jobs(created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_jobs_pending     ON ansible_jobs(status) WHERE status = 'pending';
+    `)
+    db.exec(`PRAGMA foreign_keys = ON`)
+    console.log('[DB] Migrated ansible_jobs — removed FK constraint on server_id')
+  }
+} catch (err) {
+  console.error('[DB] Migration failed:', err)
+}
 
 export default db
 

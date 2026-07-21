@@ -52,9 +52,14 @@ router.put('/:id', requirePermission('servers', 'execute'), (req, res) => {
 })
 
 router.delete('/:id', requirePermission('servers', 'execute'), (req, res) => {
-  const info = db.prepare('DELETE FROM target_servers WHERE id = ? AND user_id = ?').run(req.params.id, req.user.id)
-  if (info.changes === 0) return res.status(404).json({ error: 'Server not found' })
-  res.json({ success: true })
+  try {
+    db.prepare('UPDATE ansible_jobs SET server_id = NULL WHERE server_id = ?').run(req.params.id)
+    const info = db.prepare('DELETE FROM target_servers WHERE id = ? AND user_id = ?').run(req.params.id, req.user.id)
+    if (info.changes === 0) return res.status(404).json({ error: 'Server not found' })
+    res.json({ success: true })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
 })
 
 export default router
