@@ -1,33 +1,35 @@
 # Ansible Dashboard
 
-Dashboard web untuk menjalankan dan memonitor Ansible playbook secara real-time. Worker Node.js mendengarkan antrian job dari Supabase Realtime, lalu mengeksekusi playbook ke server target melalui SSH.
+Dashboard web untuk mengelola server target, menulis playbook, mengelola template Jinja2, menyimpan vault secrets, dan menjalankan Ansible playbook secara real-time dengan output terminal live via WebSocket.
 
 ## Fitur
 
 - Dashboard statistik: jumlah server, total job, sukses, gagal
-- Manajemen server target: tambah, edit, hapus, simpan SSH key dan password
-- Playbook manager: upload file .yml, tulis custom playbook, kelola playbook tersimpan
-- Deploy playbook ke server target dengan satu klik
-- Terminal output langsung dengan ANSI color parsing
-- Riwayat job: pencarian dan filter berdasarkan status
-- Login dan Register melalui Supabase Auth
+- Manajemen server target: tambah, edit, hapus, simpan SSH key & password terenkripsi
+- Playbook manager: upload file .yml, tulis custom YAML, lint dengan ansible-lint
+- Template Jinja2 manager: CRUD template `.j2`, auto-detect referensi dari playbook
+- Ansible Vault: encrypt/decrypt/rekey item via `ansible-vault`
+- Deploy playbook ke satu atau banyak server sekaligus
+- Terminal output langsung dengan ANSI color parsing + WebSocket realtime
+- Riwayat job: pencarian dan filter berdasarkan status, lihat detail + log
+- Login & Register dengan JWT (bcrypt)
 
 ## Arsitektur
 
-Browser terhubung langsung ke Supabase — REST untuk query data, Realtime untuk streaming log. Worker berlangganan (subscribe) ke tabel `ansible_jobs` via Realtime. Saat ada job baru dengan status `pending`, worker mengambil data playbook dan server, lalu menjalankan `ansible-playbook` sebagai proses child. Output proses dikirim baris per baris ke tabel `job_logs`, dan browser menampilkannya langsung melalui subscription Realtime.
+```
+┌──────────────┐     ┌──────────────────────┐     ┌───────────────┐
+│   Browser    │────▶│   Express Server      │◀────│    Worker     │
+│  (React)     │     │  (:3001)              │     │  (Node.js +   │
+│   WebSocket  │◀────│   REST API + WS       │────▶│   Ansible)    │
+└──────────────┘     └──────┬───────────────┘     └───────┬───────┘
+                            │                             │ SSH
+                     ┌──────▼──────┐               ┌──────▼──────┐
+                     │   SQLite    │               │   Target    │
+                     │  ansible.db │               │   Servers   │
+                     └─────────────┘               └─────────────┘
+```
 
-```
-┌──────────┐     ┌──────────────┐     ┌───────────────┐
-│ Browser  │────▶│   Supabase   │◀────│    Worker     │
-│ (React)  │     │  (DB + Auth  │     │  (Node.js +   │
-│          │◀────│  + Realtime) │────▶│   Ansible)    │
-└──────────┘     └──────────────┘     └───────┬───────┘
-                                              │ SSH
-                                        ┌─────▼──────┐
-                                        │   Target   │
-                                        │   Servers  │
-                                        └────────────┘
-```
+Browser terhubung ke Express server via REST API (data CRUD) dan WebSocket (log job realtime). Worker berjalan di dalam proses yang sama (mode `full`) atau terpisah (mode `worker`), mengambil job pending dari SQLite setiap 3 detik, mengeksekusi `ansible-playbook`, dan mengirim log + status update melalui WebSocket.
 
 ## Tech Stack
 
@@ -35,150 +37,114 @@ Browser terhubung langsung ke Supabase — REST untuk query data, Realtime untuk
 |---|---|
 | Frontend | React 19, TypeScript, TailwindCSS v4, Vite |
 | UI | Framer Motion, Lucide Icons, React Hot Toast |
-| Backend | Supabase (PostgreSQL, Auth, Realtime, RLS) |
-| Worker | Node.js 22, @supabase/supabase-js |
-| Eksekutor | Ansible, sshpass, OpenSSH |
+| Backend | Express 4, better-sqlite3, JWT (jsonwebtoken), WebSocket (ws) |
+| Worker | Node.js 22 (child_process), Ansible |
 | Infra native | Debian 12, Nginx, systemd |
 | Infra docker | Docker Compose, Nginx (alpine) |
 
 ## Prasyarat
 
-- Project Supabase (free tier cukup — daftar di https://supabase.com)
-- Server untuk deployment (Debian 12 atau VPS dengan Docker)
-- Domain (opsional, hanya diperlukan untuk native deployment)
+- Node.js 22+
+- Ansible + sshpass (untuk eksekusi playbook)
+- Server Debian 12 atau VPS (untuk deployment)
+- Domain (opsional, untuk native deployment)
 
 ## Cara Cepat (Docker)
 
 ```bash
-cp docker/.env.example docker/.env           # isi VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY
-cp worker/.env.example worker/.env           # isi SUPABASE_URL dan SUPABASE_SERVICE_ROLE_KEY
+cp docker/.env.example docker/.env    # isi VITE_API_URL dan JWT_SECRET
 cd docker
 docker compose up -d
 ```
 
-Buka Supabase SQL Editor, jalankan `supabase-fix.sql`, lalu akses `http://<ip-server>`.
+Akses `http://<ip-server>`.
 
 ## Deployment Native (Debian 12)
 
-### Setup Sistem
-
-```bash
-apt update && apt upgrade -y
-apt install -y curl wget git ufw nginx
-ufw allow OpenSSH
-ufw allow 'Nginx Full'
-ufw --force enable
-```
-
-### Install Node.js 22
+Jalankan script deploy otomatis:
 
 ```bash
 curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
-apt install -y nodejs
+apt install -y nodejs git nginx ansible sshpass
+
+git clone -b sqlite https://github.com/analuamsagab/ansible-dashboard /opt/ansible-dashboard-sqlite
+cd /opt/ansible-dashboard-sqlite
+sudo DOMAIN="ansible.example.com" JWT_SECRET="your-secret" ./deploy.sh
 ```
 
-### Clone dan Build
+Atau manual:
+
+### Setup Frontend
 
 ```bash
-git clone <repo-url> /opt/ansible-dashboard
-cd /opt/ansible-dashboard
-
-# Buat file .env frontend
-cat > .env << EOF
-VITE_SUPABASE_URL=https://project-anda.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJ...
-EOF
-
-# Buat file .env worker
-cat > worker/.env << EOF
-SUPABASE_URL=https://project-anda.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=eyJ...
-JOB_TIMEOUT_MS=1800000
-EOF
-
-# Build frontend
+cd /opt/ansible-dashboard-sqlite
 npm install
 npm run build
-
-# Install worker
-cd worker
-npm install
-apt install -y ansible sshpass
-cd ..
 ```
 
-### Konfigurasi Nginx
+### Setup Backend
 
-Buat `/etc/nginx/sites-available/ansible-dashboard`:
+```bash
+cd server
+npm install
+
+cat > .env << EOF
+PORT=3001
+JWT_SECRET=change-me-in-production
+JOB_TIMEOUT_MS=1800000
+MODE=full
+DB_PATH=./data/ansible.db
+EOF
+
+mkdir -p data
+node src/index.js
+```
+
+### Nginx (proxying API + WebSocket)
 
 ```nginx
 server {
     listen 80;
-    server_name domain-anda.com;
+    server_name ansible.example.com;
 
-    root /opt/ansible-dashboard/dist;
+    root /opt/ansible-dashboard-sqlite/dist;
     index index.html;
 
     gzip on;
     gzip_types text/css application/javascript application/json image/svg+xml;
     gzip_min_length 256;
 
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
+    location / { try_files $uri $uri/ /index.html; }
 
     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|webp)$ {
         expires 1y;
         add_header Cache-Control "public, immutable";
     }
+
+    location /api { proxy_pass http://127.0.0.1:3001; proxy_http_version 1.1; proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection "upgrade"; proxy_set_header Host $host; }
+
+    location /ws { proxy_pass http://127.0.0.1:3001; proxy_http_version 1.1; proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection "upgrade"; proxy_set_header Host $host; }
 }
 ```
 
-Aktifkan dan reload:
-
-```bash
-ln -sf /etc/nginx/sites-available/ansible-dashboard /etc/nginx/sites-enabled/
-rm -f /etc/nginx/sites-enabled/default
-nginx -t && systemctl reload nginx
-```
-
-### Worker sebagai Systemd Service
-
-Buat `/etc/systemd/system/ansible-worker.service`:
+### Systemd Service
 
 ```ini
 [Unit]
-Description=Ansible Dashboard Worker
+Description=Ansible Dashboard Backend
 After=network-online.target
-Wants=network-online.target
 
 [Service]
 Type=simple
 User=ansible
-Group=ansible
-WorkingDirectory=/opt/ansible-dashboard/worker
-EnvironmentFile=/opt/ansible-dashboard/worker/.env
-ExecStart=/usr/bin/node --env-file /opt/ansible-dashboard/worker/.env /opt/ansible-dashboard/worker/worker.js
+WorkingDirectory=/opt/ansible-dashboard-sqlite/server
+ExecStart=/usr/bin/node src/index.js
 Restart=always
 RestartSec=5
-Environment=NODE_ENV=production
 
 [Install]
 WantedBy=multi-user.target
 ```
-
-Enable dan start:
-
-```bash
-useradd -m -s /bin/bash ansible
-chown -R ansible:ansible /opt/ansible-dashboard
-systemctl daemon-reload
-systemctl enable --now ansible-worker
-```
-
-### Database
-
-Jalankan `supabase-fix.sql` di Supabase SQL Editor (dashboard → SQL Editor → paste → run).
 
 ### Update
 
@@ -186,159 +152,155 @@ Jalankan `supabase-fix.sql` di Supabase SQL Editor (dashboard → SQL Editor →
 sudo ./update.sh
 ```
 
-Script ini akan melakukan git pull, npm install, build ulang, dan restart worker.
+Script ini melakukan git pull, npm install, build ulang frontend, dan restart backend.
 
 ## Deployment Docker
 
-Seluruh file deployment Docker berada di `docker/`:
-
-```
-docker/
-├── docker-compose.yml          # Orchestrasi frontend + worker
-├── .env.example                # Template env untuk frontend build args
-├── README.md                   # Panduan khusus docker
-└── frontend/
-    ├── Dockerfile              # Multi-stage: node:22 build → nginx:alpine serve
-    └── nginx.conf              # Konfigurasi Nginx untuk SPA
+```bash
+cd docker
+cp .env.example .env    # isi VITE_API_URL dan JWT_SECRET
+docker compose up -d --build
 ```
 
-Worker menggunakan `worker/Dockerfile` yang sudah ada.
-
-### Penggunaan
+### Stop
 
 ```bash
-# Pertama kali
-cp docker/.env.example docker/.env   # isi VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY
-cp worker/.env.example worker/.env   # isi SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY
-cd docker
-docker compose up -d
-
-# Update setelah perubahan kode
-docker compose build --no-cache
-docker compose up -d
-
-# Melihat log
-docker compose logs -f frontend
-docker compose logs -f worker
-
-# Stop
 docker compose down
 ```
 
-### Catatan
+### Logs
 
-- Variabel `VITE_*` adalah build-time args. Vite meng-inline nilai-nilai ini saat build.
-- Worker menggunakan `env_file` di docker-compose, dimuat saat runtime.
-- Container worker sudah termasuk Ansible dan sshpass.
+```bash
+docker compose logs -f backend
+docker compose logs -f frontend
+```
 
 ## Variabel Environment
 
-| Variabel | File | Scope | Deskripsi |
+### Frontend (`.env` di root)
+
+| Variabel | Wajib | Deskripsi |
+|---|---|---|
+| `VITE_API_URL` | Ya | URL backend API (contoh: `http://localhost:3001`) |
+
+### Backend (`server/.env`)
+
+| Variabel | Wajib | Default | Deskripsi |
 |---|---|---|---|
-| `VITE_SUPABASE_URL` | `.env` (root) | Build-time | URL project Supabase |
-| `VITE_SUPABASE_ANON_KEY` | `.env` (root) | Build-time | Anon key Supabase (publik) |
-| `SUPABASE_URL` | `worker/.env` | Runtime | URL project Supabase |
-| `SUPABASE_SERVICE_ROLE_KEY` | `worker/.env` | Runtime | Service role key Supabase (rahasia) |
-| `JOB_TIMEOUT_MS` | `worker/.env` | Runtime | Timeout job dalam ms (default: 1800000 = 30 menit) |
+| `PORT` | Tidak | `3001` | Port HTTP server |
+| `JWT_SECRET` | Ya | `change-me-in-production` | Secret key untuk JWT |
+| `JOB_TIMEOUT_MS` | Tidak | `1800000` | Timeout job dalam ms (30 menit) |
+| `MODE` | Tidak | `full` | `full` (server+worker) atau `worker` (worker only) |
+| `DB_PATH` | Tidak | `./data/ansible.db` | Lokasi file SQLite |
 
-## Database
+### Docker (`docker/.env`)
 
-Jalankan `supabase-fix.sql` di Supabase SQL Editor. File ini idempotent dan dapat dijalankan berulang kali.
-
-Isi file:
-
-| Bagian | Isi |
-|---|---|
-| 1 | Extensions (pgcrypto) |
-| 2 | Enum `job_status` (pending, running, success, failed, timeout) |
-| 3 | CREATE TABLE IF NOT EXISTS — 5 tabel (profiles, target_servers, playbooks, ansible_jobs, job_logs) |
-| 4 | DEFAULT auth.uid() pada kolom user_id |
-| 5 | Trigger auto-buat profile saat user signup |
-| 6 | Fungsi is_admin() SECURITY DEFINER — mencegah infinite recursion RLS |
-| 7 | Hapus semua policy lama |
-| 8–12 | RLS policies untuk semua tabel |
-| 13 | Indexes untuk performa query |
-| 14 | Fungsi cleanup log di atas 30 hari |
-| 15 | Realtime publication untuk worker |
+| Variabel | Wajib | Deskripsi |
+|---|---|---|
+| `VITE_API_URL` | Ya | URL backend (contoh: `http://localhost:3001`) |
+| `JWT_SECRET` | Ya | Secret key backend |
+| `JOB_TIMEOUT_MS` | Tidak | Timeout job (default: 1800000) |
+| `MODE` | Tidak | `full` atau `worker` |
 
 ## Struktur Project
 
 ```
-ansible-dashboard/
-├── src/                       # Frontend React
+ansible-dashboard-sqlite/
+├── src/                          # Frontend React
 │   ├── components/
-│   │   ├── auth/              # LoginForm, RegisterForm
-│   │   ├── dashboard/         # DashboardOverview, ServerManager, PlaybookManager, dll
-│   │   ├── layout/            # Sidebar
-│   │   └── ui/                # StatusBadge, Skeleton, Modal
-│   ├── hooks/                 # useAuth, useRealtimeLogs
-│   ├── lib/                   # Supabase client
-│   └── pages/                 # Login, Register, Dashboard
-├── worker/                    # Worker Node.js
-│   ├── worker.js              # Eksekutor job (spawn ansible-playbook)
-│   ├── supabase.js            # Supabase client (service role)
-│   ├── Dockerfile
-│   ├── .env                   # Tidak di-commit
-│   └── .env.example
-├── docker/                    # Deployment Docker
+│   │   ├── auth/                 # LoginForm, RegisterForm
+│   │   ├── dashboard/            # DashboardOverview, ServerManager, PlaybookManager, TemplateManager, VaultManager, PlaybookDeploy, TerminalView, JobHistory, JobDetailModal, LintResults, ServerSelector, YamlEditor
+│   │   ├── layout/               # Sidebar
+│   │   └── ui/                   # Modal, Skeleton, StatusBadge
+│   ├── context/                  # AuthContext
+│   ├── hooks/                    # useRealtimeLogs, useFetch
+│   ├── lib/                      # api.ts (REST client), ansi.ts (ANSI parser)
+│   └── pages/                    # Login, Register, Dashboard
+├── server/                       # Backend Express
+│   ├── src/
+│   │   ├── index.js              # Entry point, mount routes + WS + worker
+│   │   ├── auth.js               # JWT auth (register, login, /me, middleware)
+│   │   ├── db.js                 # SQLite initialization + schema
+│   │   ├── websocket.js          # WebSocket server + broadcasting
+│   │   ├── worker.js             # Job executor (spawn ansible-playbook)
+│   │   ├── utils.js              # Shared utilities (extractTemplateRefs, writePasswordFile)
+│   │   └── routes/
+│   │       ├── servers.js        # CRUD server target
+│   │       ├── playbooks.js      # CRUD playbook
+│   │       ├── templates.js      # CRUD template + detect
+│   │       ├── vault.js          # CRUD vault + encrypt/decrypt/rekey
+│   │       ├── jobs.js           # Job list + create + execute
+│   │       ├── lint.js           # Ansible lint
+│   │       └── stats.js          # Statistik dashboard
+│   └── Dockerfile
+├── docker/                       # Docker Compose
 │   ├── docker-compose.yml
 │   ├── .env.example
-│   ├── README.md
 │   └── frontend/
 │       ├── Dockerfile
 │       └── nginx.conf
-├── supabase-fix.sql           # Schema database lengkap + policies + indexes
-├── deploy.sh                  # Script deploy native otomatis
-├── update.sh                  # Script update native otomatis
-├── DEPLOY.md                  # Panduan deploy native (lengkap)
-├── .env                       # Tidak di-commit
-└── .env.example
+├── public/                       # Static assets (ansible-dashboard.webp)
+├── deploy.sh                     # Script deploy native otomatis
+├── update.sh                     # Script update native otomatis
+├── DEPLOY.md                     # Panduan deploy native (lengkap)
+├── .env.example                  # Template env frontend
+└── vite.config.ts
 ```
 
 ## Development Lokal
 
 ```bash
 git clone <repo-url>
-cd ansible-dashboard
-npm install
+cd ansible-dashboard-sqlite
 
-cp .env.example .env           # isi VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY
-npm run dev                    # frontend di http://localhost:5173
-
-# Terminal terpisah:
-cd worker
+# Terminal 1 — Backend
+cd server
+cp .env.example .env
 npm install
-cp .env.example .env           # isi SUPABASE_URL dan SUPABASE_SERVICE_ROLE_KEY
-node worker.js
+node src/index.js          # running di :3001
+
+# Terminal 2 — Frontend
+cd ..
+cp .env.example .env       # isi VITE_API_URL=http://localhost:3001
+npm install
+npm run dev                # running di :5173
 ```
+
+Buka `http://localhost:5173`. Daftar akun baru, lalu login.
 
 ## Keamanan
 
 | Area | Keterangan |
 |---|---|
-| SSH credentials | Disimpan terenkripsi di database. Ditulis ke temp file saat eksekusi, langsung dihapus di blok `finally` |
-| Isolasi worker | Berjalan sebagai user `ansible` (bukan root). Docker memberikan isolasi tambahan |
-| Supabase RLS | Service role key hanya digunakan oleh worker — tidak pernah terekspos ke frontend |
+| SSH credentials | Disimpan di SQLite. Ditulis ke temp file saat eksekusi, langsung dihapus di blok `finally` |
+| Isolasi worker | Berjalan dalam proses yang sama (mode full) atau container Docker (mode worker). User non-root `ansible` |
+| JWT | Token expire 7 hari, dikirim via header Authorization |
+| Vault password | Tidak pernah disimpan di DB — dimasukkan manual setiap deploy |
+| Vault secrets | Disimpan terenkripsi via `ansible-vault`, hanya bisa didekripsi dengan password |
 | Timeout job | Batas keras 30 menit, dihentikan paksa via SIGKILL |
-| Pembersihan file | Temp playbook, SSH key, dan direktori kerja dihapus setelah setiap job |
+| Pembersihan file | Temp playbook, SSH key, inventory, vault password file dihapus setelah setiap job |
 | Firewall | Hanya port 22 (SSH) dan 80 (HTTP) yang terbuka |
+| SQLite | WAL mode untuk performa, foreign keys ON |
 
 ## Troubleshooting
 
-**WebSocket / Realtime tidak berfungsi**
-Pastikan Node.js versi 22 atau lebih baru. Node 20 memiliki bug WebSocket yang sudah diperbaiki di versi 22.
+**WebSocket tidak terhubung**
+Pastikan Nginx proxy `/ws` dengan Upgrade header. Lihat konfigurasi Nginx di atas.
 
-**Error 500 saat mengakses data**
-Jalankan `supabase-fix.sql`. Ini memperbaiki infinite recursion RLS dan default kolom yang hilang.
+**Error 401 saat login**
+Pastikan `JWT_SECRET` konsisten antara session. Ganti JWT_SECRET akan invalidate semua token.
 
 **Worker tidak memproses job**
-Periksa `SUPABASE_SERVICE_ROLE_KEY` di `worker/.env`. Worker menggunakan service role key, bukan anon key.
+Cek `MODE` di `server/.env`. Set ke `full` supaya server + worker jalan bareng.
 
-**Git pull gagal di server karena perubahan lokal**
+**Ansible error "Host key verification failed"**
+Environment `ANSIBLE_HOST_KEY_CHECKING=False` sudah di-set otomatis oleh worker.
+
+**Git pull gagal karena file lokal berubah**
 ```bash
-git stash && git pull origin main && npm install && npm run build && systemctl restart ansible-worker
+git stash && git pull origin sqlite
 ```
 
-# Creator
-Bagas Maulana
-Lebih banyak tentang saya : https://bagasproject.my.id
+## Creator
+
+Bagas Maulana — [bagasproject.my.id](https://bagasproject.my.id)
