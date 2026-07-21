@@ -119,10 +119,10 @@ try {
 try { db.exec("ALTER TABLE ansible_jobs ADD COLUMN server_ids TEXT") } catch {}
 
 try {
-  const fks = db.prepare(
-    "SELECT * FROM pragma_foreign_key_list WHERE `table` = 'ansible_jobs' AND `from` = 'server_id'"
-  ).all()
-  if (fks.length > 0) {
+  const col = db.prepare(
+    "SELECT * FROM pragma_table_info('ansible_jobs') WHERE `name` = 'server_id'"
+  ).get()
+  if (col && col.notnull === 1) {
     db.exec(`PRAGMA foreign_keys = OFF`)
     db.exec(`
       CREATE TABLE ansible_jobs_v2 (
