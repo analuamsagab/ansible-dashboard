@@ -4,17 +4,18 @@ import { useAuth } from '../../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Server, ScrollText, Terminal,
-  ChevronLeft, LogOut, FileText, CheckSquare, Lock,
+  ChevronLeft, LogOut, FileText, CheckSquare, Lock, Users,
 } from 'lucide-react'
 
-const navItems = [
-  { id: 'overview',  label: 'Overview',     icon: LayoutDashboard },
-  { id: 'servers',   label: 'Servers',      icon: Server },
-  { id: 'playbooks', label: 'Playbooks',    icon: ScrollText },
-  { id: 'templates', label: 'Templates',    icon: FileText },
-  { id: 'vault',     label: 'Vault',        icon: Lock },
-  { id: 'lint',      label: 'Lint',         icon: CheckSquare },
-  { id: 'jobs',      label: 'Job History',  icon: Terminal },
+const allNavItems = [
+  { id: 'overview',  label: 'Overview',     icon: LayoutDashboard, feature: 'overview' },
+  { id: 'servers',   label: 'Servers',      icon: Server,         feature: 'servers' },
+  { id: 'playbooks', label: 'Playbooks',    icon: ScrollText,     feature: 'playbooks' },
+  { id: 'templates', label: 'Templates',    icon: FileText,       feature: 'templates' },
+  { id: 'vault',     label: 'Vault',        icon: Lock,           feature: 'vault' },
+  { id: 'lint',      label: 'Lint',         icon: CheckSquare,    feature: 'lint' },
+  { id: 'jobs',      label: 'Job History',  icon: Terminal,       feature: 'jobs' },
+  { id: 'users',     label: 'Users',        icon: Users,          feature: 'users' },
 ]
 
 interface SidebarProps {
@@ -24,8 +25,10 @@ interface SidebarProps {
 
 export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false)
-  const { user, logout } = useAuth()
+  const { user, can, logout } = useAuth()
   const navigate = useNavigate()
+
+  const navItems = allNavItems.filter(item => can(item.feature, 'view'))
 
   const handleLogout = async () => {
     await logout()

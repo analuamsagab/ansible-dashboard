@@ -1,12 +1,12 @@
 import { Router } from 'express'
 import db, { genId } from '../db.js'
-import { authMiddleware } from '../auth.js'
+import { authMiddleware, requirePermission } from '../auth.js'
 import { executeJob } from '../worker.js'
 
 const router = Router()
 router.use(authMiddleware)
 
-router.get('/', (req, res) => {
+router.get('/', requirePermission('jobs', 'view'), (req, res) => {
   const jobs = db.prepare(`
     SELECT
       j.id, j.status, j.created_at, j.started_at, j.finished_at,
@@ -47,7 +47,7 @@ router.get('/', (req, res) => {
   }))
 })
 
-router.post('/', (req, res) => {
+router.post('/', requirePermission('jobs', 'execute'), (req, res) => {
   const { serverId, serverIds, playbookId, vaultPassword } = req.body
   const ids = serverIds || (serverId ? [serverId] : [])
   if (ids.length === 0 || !playbookId) return res.status(400).json({ error: 'serverIds and playbookId required' })

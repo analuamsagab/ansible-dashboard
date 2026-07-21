@@ -14,11 +14,16 @@ router.post('/register', async (req, res) => {
     const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email)
     if (existing) return res.status(409).json({ error: 'Email already registered' })
 
+    const userCount = db.prepare('SELECT COUNT(*) AS c FROM users').get().c
+    const role = userCount === 0 ? 'admin' : 'engineer'
+
     const password_hash = await bcrypt.hash(password, 10)
     const id = genId()
-    db.prepare('INSERT INTO users (id, email, password_hash, full_name) VALUES (?, ?, ?, ?)').run(id, email, password_hash, fullName || null)
+    db.prepare('INSERT INTO users (id, email, password_hash, full_name, role) VALUES (?, ?, ?, ?, ?)').run(id, email, password_hash, fullName || null, role)
 
-    res.json({ user: { id, email, fullName, role: 'user' } })
+    const permsRow = db.prepare('SELECT permissions FROM role_permissions WHERE role = ?').get(role)
+    const permissions = permsRow ? JSON.parse(permsRow.permissions) : {}
+    res.json({ user: { id, email, fullName, role, permissions } })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
@@ -36,7 +41,9 @@ router.post('/login', async (req, res) => {
     if (!valid) return res.status(401).json({ error: 'Invalid credentials' })
 
     const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '7d' })
-    res.json({ token, user: { id: user.id, email: user.email, fullName: user.full_name, role: user.role } })
+    const permsRow = db.prepare('SELECT permissions FROM role_permissions WHERE role = ?').get(user.role)
+    const permissions = permsRow ? JSON.parse(permsRow.permissions) : {}
+    res.json({ token, user: { id: user.id, email: user.email, fullName: user.full_name, role: user.role, permissions } })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
@@ -51,7 +58,10 @@ router.get('/me', (req, res) => {
     const user = db.prepare('SELECT id, email, full_name, role FROM users WHERE id = ?').get(decoded.id)
     if (!user) return res.status(401).json({ error: 'User not found' })
 
-    res.json({ id: user.id, email: user.email, fullName: user.full_name, role: user.role })
+    const permsRow = db.prepare('SELECT permissions FROM role_permissions WHERE role = ?').get(user.role)
+    const permissions = permsRow ? JSON.parse(permsRow.permissions) : {}
+
+    res.json({ id: user.id, email: user.email, fullName: user.full_name, role: user.role, permissions })
   } catch (err) {
     res.status(401).json({ error: 'Invalid token' })
   }
@@ -75,5 +85,25 @@ export function verifyToken(token) {
     return jwt.verify(token, JWT_SECRET)
   } catch {
     return null
+  }
+}
+
+export function getRolePermissions(role) {
+  const row = db.prepare('SELECT permissions FROM role_permissions WHERE role = ?').get(role)
+  if (row) return JSON.parse(row.permissions)
+  return {}
+}
+
+export function requirePermission(feature, requiredLevel) {
+  return (req, res, next) => {
+    const perms = getRolePermissions(req.user.role)
+    const level = perms[feature] || 'none'
+
+    if (level === 'none') return res.status(403).json({ error: 'Forbidden' })
+    if (requiredLevel === 'view') return next()
+    if (requiredLevel === 'execute' && (level === 'execute' || level === 'manage')) return next()
+    if (requiredLevel === 'manage' && level === 'manage') return next()
+
+    res.status(403).json({ error: 'Forbidden' })
   }
 }

@@ -19,7 +19,7 @@ db.exec(`
     email         TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
     full_name     TEXT,
-    role          TEXT NOT NULL DEFAULT 'user',
+    role          TEXT NOT NULL DEFAULT 'engineer',
     created_at    DATETIME DEFAULT (datetime('now'))
   );
 
@@ -94,7 +94,26 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_vault_user ON vault_items(user_id);
+
+  CREATE TABLE IF NOT EXISTS role_permissions (
+    role        TEXT PRIMARY KEY,
+    permissions TEXT NOT NULL DEFAULT '{}'
+  );
 `)
+
+try {
+  const count = db.prepare('SELECT COUNT(*) AS c FROM role_permissions').get().c
+  if (count === 0) {
+    const insert = db.prepare('INSERT OR IGNORE INTO role_permissions (role, permissions) VALUES (?, ?)')
+    const roles = [
+      ['admin',    '{"overview":"execute","servers":"execute","playbooks":"execute","templates":"execute","vault":"execute","lint":"execute","jobs":"execute","users":"manage"}'],
+      ['co-admin', '{"overview":"execute","servers":"execute","playbooks":"execute","templates":"execute","vault":"execute","lint":"execute","jobs":"execute","users":"manage"}'],
+      ['engineer', '{"overview":"execute","servers":"execute","playbooks":"execute","templates":"execute","vault":"execute","lint":"execute","jobs":"execute","users":"none"}'],
+      ['visitor',  '{"overview":"view","servers":"view","playbooks":"view","templates":"view","vault":"view","lint":"execute","jobs":"view","users":"none"}'],
+    ]
+    for (const [role, perms] of roles) insert.run(role, perms)
+  }
+} catch {}
 
 try { db.exec("ALTER TABLE ansible_jobs ADD COLUMN server_ids TEXT") } catch {}
 

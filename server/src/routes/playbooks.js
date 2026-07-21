@@ -1,11 +1,11 @@
 import { Router } from 'express'
 import db, { genId } from '../db.js'
-import { authMiddleware } from '../auth.js'
+import { authMiddleware, requirePermission } from '../auth.js'
 
 const router = Router()
 router.use(authMiddleware)
 
-router.get('/', (req, res) => {
+router.get('/', requirePermission('playbooks', 'view'), (req, res) => {
   const playbooks = db.prepare(`
     SELECT id, name, description, content_yaml, is_system_default, created_at
     FROM playbooks
@@ -15,7 +15,7 @@ router.get('/', (req, res) => {
   res.json(playbooks)
 })
 
-router.post('/', (req, res) => {
+router.post('/', requirePermission('playbooks', 'execute'), (req, res) => {
   const { name, description, content_yaml, is_system_default } = req.body
   if (!name || !content_yaml) return res.status(400).json({ error: 'name and content_yaml required' })
 
@@ -29,7 +29,7 @@ router.post('/', (req, res) => {
   res.json(playbook)
 })
 
-router.put('/:id', (req, res) => {
+router.put('/:id', requirePermission('playbooks', 'execute'), (req, res) => {
   try {
     const existing = db.prepare('SELECT id FROM playbooks WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id)
     if (!existing) return res.status(404).json({ error: 'Playbook not found' })
@@ -52,7 +52,7 @@ router.put('/:id', (req, res) => {
   }
 })
 
-router.delete('/:id', (req, res) => {
+router.delete('/:id', requirePermission('playbooks', 'execute'), (req, res) => {
   try {
     db.prepare('DELETE FROM ansible_jobs WHERE playbook_id = ? AND user_id = ?').run(req.params.id, req.user.id)
     const info = db.prepare('DELETE FROM playbooks WHERE id = ? AND user_id = ? AND is_system_default = 0').run(req.params.id, req.user.id)

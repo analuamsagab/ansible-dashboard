@@ -1,25 +1,25 @@
 import { Router } from 'express'
 import db, { genId } from '../db.js'
-import { authMiddleware } from '../auth.js'
+import { authMiddleware, requirePermission } from '../auth.js'
 import { extractTemplateRefs } from '../utils.js'
 
 const router = Router()
 router.use(authMiddleware)
 
-router.get('/', (req, res) => {
+router.get('/', requirePermission('templates', 'view'), (req, res) => {
   const templates = db.prepare(
     'SELECT id, name, filename, created_at FROM templates WHERE user_id = ? ORDER BY created_at DESC'
   ).all(req.user.id)
   res.json(templates)
 })
 
-router.get('/:id', (req, res) => {
+router.get('/:id', requirePermission('templates', 'view'), (req, res) => {
   const t = db.prepare('SELECT * FROM templates WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id)
   if (!t) return res.status(404).json({ error: 'Template not found' })
   res.json(t)
 })
 
-router.post('/', (req, res) => {
+router.post('/', requirePermission('templates', 'execute'), (req, res) => {
   const { name, filename, content } = req.body
   if (!name || !filename || content === undefined) {
     return res.status(400).json({ error: 'name, filename, and content are required' })
@@ -30,7 +30,7 @@ router.post('/', (req, res) => {
   res.json({ id, name, filename })
 })
 
-router.post('/detect', (req, res) => {
+router.post('/detect', requirePermission('templates', 'execute'), (req, res) => {
   const { content_yaml } = req.body
   if (!content_yaml) return res.status(400).json({ error: 'content_yaml required' })
 
@@ -47,7 +47,7 @@ router.post('/detect', (req, res) => {
   res.json({ found: matchedNames, missing })
 })
 
-router.put('/:id', (req, res) => {
+router.put('/:id', requirePermission('templates', 'execute'), (req, res) => {
   const existing = db.prepare('SELECT id FROM templates WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id)
   if (!existing) return res.status(404).json({ error: 'Template not found' })
   const { name, filename, content } = req.body
@@ -56,7 +56,7 @@ router.put('/:id', (req, res) => {
   res.json({ success: true })
 })
 
-router.delete('/:id', (req, res) => {
+router.delete('/:id', requirePermission('templates', 'execute'), (req, res) => {
   db.prepare('DELETE FROM templates WHERE id = ? AND user_id = ?').run(req.params.id, req.user.id)
   res.json({ success: true })
 })

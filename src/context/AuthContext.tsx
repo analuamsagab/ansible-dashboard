@@ -7,11 +7,13 @@ interface User {
   email: string
   fullName?: string
   role: string
+  permissions: Record<string, string>
 }
 
 interface AuthContextType {
   user: User | null
   loading: boolean
+  can: (feature: string, level?: string) => boolean
   login: (email: string, password: string) => Promise<{ error: { message: string } | null }>
   register: (email: string, password: string, fullName: string) => Promise<{ error: { message: string } | null }>
   logout: () => void
@@ -34,6 +36,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const can = useCallback((feature: string, level = 'view'): boolean => {
+    if (!user) return false
+    const userLevel = user.permissions[feature] || 'none'
+    if (userLevel === 'none') return false
+    if (level === 'view') return userLevel !== 'none'
+    if (level === 'execute') return userLevel === 'execute' || userLevel === 'manage'
+    if (level === 'manage') return userLevel === 'manage'
+    return false
+  }, [user])
+
   const login = useCallback(async (email: string, password: string) => {
     try {
       const data = await api.login(email, password)
@@ -48,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = useCallback(async (email: string, password: string, fullName: string) => {
     try {
-      await api.register(email, password, fullName)
+      const data = await api.register(email, password, fullName)
       return { error: null }
     } catch (err: unknown) {
       const e = err as Error
@@ -62,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, can, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   )

@@ -25,19 +25,19 @@ async function req<T = unknown>(path: string, opts: RequestInit = {}): Promise<T
 
 export const api = {
   login: (email: string, password: string) =>
-    req<{ token: string; user: { id: string; email: string; fullName: string; role: string } }>(
+    req<{ token: string; user: { id: string; email: string; fullName: string; role: string; permissions: Record<string, string> } }>(
       '/auth/login',
       { method: 'POST', body: JSON.stringify({ email, password }) }
     ),
 
   register: (email: string, password: string, fullName: string) =>
-    req<{ user: { id: string; email: string; fullName: string; role: string } }>(
+    req<{ user: { id: string; email: string; fullName: string; role: string; permissions: Record<string, string> } }>(
       '/auth/register',
       { method: 'POST', body: JSON.stringify({ email, password, fullName }) }
     ),
 
   me: () =>
-    req<{ id: string; email: string; fullName: string; role: string }>('/auth/me'),
+    req<{ id: string; email: string; fullName: string; role: string; permissions: Record<string, string> }>('/auth/me'),
 
   getServers: () =>
     req<{ id: string; friendly_name: string; ip_address: string; ssh_port: number; ssh_user: string; created_at: string }[]>('/servers'),
@@ -117,6 +117,18 @@ export const api = {
 
   deleteVaultItem: (id: string) =>
     req<{ success: boolean }>('/vault/' + id, { method: 'DELETE' }),
+
+  getUsers: () =>
+    req<{ id: string; email: string; full_name: string | null; role: string; created_at: string }[]>('/users'),
+
+  updateUserRole: (id: string, role: string) =>
+    req<{ success: boolean }>('/users/' + id + '/role', { method: 'PUT', body: JSON.stringify({ role }) }),
+
+  getRolePermissions: () =>
+    req<Record<string, Record<string, string>>>('/users/permissions'),
+
+  updateRolePermissions: (role: string, permissions: Record<string, string>) =>
+    req<{ success: boolean }>('/users/permissions/' + role, { method: 'PUT', body: JSON.stringify({ permissions }) }),
 }
 
 export { setToken, token }

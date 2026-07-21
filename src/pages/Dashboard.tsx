@@ -12,8 +12,9 @@ import { PlaybookDeploy } from '../components/dashboard/PlaybookDeploy'
 import { TerminalView } from '../components/dashboard/TerminalView'
 import { JobHistory } from '../components/dashboard/JobHistory'
 import { motion, AnimatePresence } from 'framer-motion'
+import { UserManager } from '../components/dashboard/UserManager'
 import { Toaster } from 'react-hot-toast'
-import { CheckSquare } from 'lucide-react'
+import { CheckSquare, Users } from 'lucide-react'
 
 interface Server {
   id: string
@@ -21,7 +22,7 @@ interface Server {
 }
 
 export function DashboardPage() {
-  const { user } = useAuth()
+  const { user, can } = useAuth()
   const [activeSection, setActiveSection] = useState('overview')
   const [selectedServers, setSelectedServers] = useState<Server[]>([])
   const [activeJobId, setActiveJobId] = useState<string | null>(null)
@@ -74,18 +75,20 @@ export function DashboardPage() {
               selectedServerIds={selectedServers.map(s => s.id)}
               onSelectServer={handleSelectServer}
             />
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div className="bg-gray-900/80 backdrop-blur-sm rounded-xl border border-gray-800 p-4">
-                <PlaybookDeploy
-                  serverIds={selectedServers.map(s => s.id)}
-                  serverNames={selectedServers.map(s => s.friendly_name)}
-                  onJobCreated={handleJobCreated}
-                />
+            {can('overview', 'execute') && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="bg-gray-900/80 backdrop-blur-sm rounded-xl border border-gray-800 p-4">
+                  <PlaybookDeploy
+                    serverIds={selectedServers.map(s => s.id)}
+                    serverNames={selectedServers.map(s => s.friendly_name)}
+                    onJobCreated={handleJobCreated}
+                  />
+                </div>
+                <div className="bg-gray-900/80 backdrop-blur-sm rounded-xl border border-gray-800 p-4">
+                  <TerminalView jobId={activeJobId} status={jobStatus} />
+                </div>
               </div>
-              <div className="bg-gray-900/80 backdrop-blur-sm rounded-xl border border-gray-800 p-4">
-                <TerminalView jobId={activeJobId} status={jobStatus} />
-              </div>
-            </div>
+            )}
           </motion.div>
         )
       case 'servers':
@@ -156,6 +159,14 @@ export function DashboardPage() {
           <motion.div key="jobs" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <div className="bg-gray-900/80 backdrop-blur-sm rounded-xl border border-gray-800 p-4">
               <JobHistory onSelectJob={handleSelectJob} />
+            </div>
+          </motion.div>
+        )
+      case 'users':
+        return (
+          <motion.div key="users" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <div className="bg-gray-900/80 backdrop-blur-sm rounded-xl border border-gray-800 p-4 w-full">
+              <UserManager />
             </div>
           </motion.div>
         )

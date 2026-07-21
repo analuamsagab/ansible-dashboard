@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import db, { genId } from '../db.js'
-import { authMiddleware } from '../auth.js'
+import { authMiddleware, requirePermission } from '../auth.js'
 import { writeFileSync, readFileSync, unlinkSync, mkdtempSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -23,21 +23,21 @@ function vaultExec(args) {
   }
 }
 
-router.get('/', (req, res) => {
+router.get('/', requirePermission('vault', 'view'), (req, res) => {
   const items = db.prepare(
     'SELECT id, name, description, created_at FROM vault_items WHERE user_id = ? ORDER BY created_at DESC'
   ).all(req.user.id)
   res.json(items)
 })
 
-router.get('/:id', (req, res) => {
+router.get('/:id', requirePermission('vault', 'view'), (req, res) => {
   const item = db.prepare('SELECT * FROM vault_items WHERE id = ? AND user_id = ?')
     .get(req.params.id, req.user.id)
   if (!item) return res.status(404).json({ error: 'Vault item not found' })
   res.json(item)
 })
 
-router.post('/', (req, res) => {
+router.post('/', requirePermission('vault', 'execute'), (req, res) => {
   const { name, description, content, vaultPassword } = req.body
   if (!name || !content || !vaultPassword) {
     return res.status(400).json({ error: 'name, content, and vaultPassword are required' })
@@ -63,7 +63,7 @@ router.post('/', (req, res) => {
   }
 })
 
-router.post('/decrypt', (req, res) => {
+router.post('/decrypt', requirePermission('vault', 'execute'), (req, res) => {
   const { id, vaultPassword } = req.body
   if (!id || !vaultPassword) return res.status(400).json({ error: 'id and vaultPassword are required' })
 
@@ -87,7 +87,7 @@ router.post('/decrypt', (req, res) => {
   }
 })
 
-router.post('/rekey', (req, res) => {
+router.post('/rekey', requirePermission('vault', 'execute'), (req, res) => {
   const { id, oldPassword, newPassword } = req.body
   if (!id || !oldPassword || !newPassword) {
     return res.status(400).json({ error: 'id, oldPassword, and newPassword are required' })
@@ -119,7 +119,7 @@ router.post('/rekey', (req, res) => {
   }
 })
 
-router.put('/:id', (req, res) => {
+router.put('/:id', requirePermission('vault', 'execute'), (req, res) => {
   const { name, description, content, vaultPassword } = req.body
   if (!name) return res.status(400).json({ error: 'name is required' })
 
@@ -151,7 +151,7 @@ router.put('/:id', (req, res) => {
   res.json({ success: true })
 })
 
-router.delete('/:id', (req, res) => {
+router.delete('/:id', requirePermission('vault', 'execute'), (req, res) => {
   db.prepare('DELETE FROM vault_items WHERE id = ? AND user_id = ?').run(req.params.id, req.user.id)
   res.json({ success: true })
 })

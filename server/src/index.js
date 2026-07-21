@@ -10,6 +10,7 @@ import statsRouter from './routes/stats.js'
 import templatesRouter from './routes/templates.js'
 import lintRouter from './routes/lint.js'
 import vaultRouter from './routes/vault.js'
+import usersRouter from './routes/users.js'
 import { setupWebSocket } from './websocket.js'
 import { setBroadcastFns, startWorker } from './worker.js'
 import db from './db.js'
@@ -30,6 +31,7 @@ app.use('/api/stats', statsRouter)
 app.use('/api/templates', templatesRouter)
 app.use('/api/lint', lintRouter)
 app.use('/api/vault', vaultRouter)
+app.use('/api/users', usersRouter)
 
 const wsServer = setupWebSocket(server)
 setBroadcastFns(wsServer.broadcastLog, wsServer.broadcastStatus)

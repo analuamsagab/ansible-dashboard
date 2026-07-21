@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { api } from '../../lib/api'
 import { useFetch } from '../../hooks/useFetch'
+import { useAuth } from '../../context/AuthContext'
 import { motion } from 'framer-motion'
 import { FileText, Upload, Trash2, Pencil, Plus } from 'lucide-react'
 import { Modal } from '../ui/Modal'
@@ -13,6 +14,7 @@ interface Template {
 }
 
 export function TemplateManager() {
+  const { can } = useAuth()
   const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState('')
   const [filename, setFilename] = useState('')
@@ -104,13 +106,15 @@ export function TemplateManager() {
           <FileText className="w-4 h-4 text-emerald-400" />
           Templates
         </h2>
-        <button
-          onClick={() => { setShowForm(!showForm); setError(null) }}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-emerald-600 hover:bg-emerald-500 rounded-lg transition-colors text-white"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          Add
-        </button>
+        {can('templates', 'execute') && (
+          <button
+            onClick={() => { setShowForm(!showForm); setError(null) }}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-emerald-600 hover:bg-emerald-500 rounded-lg transition-colors text-white"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Add
+          </button>
+        )}
       </div>
 
       {showForm && (
@@ -192,20 +196,22 @@ export function TemplateManager() {
                   </p>
                 </div>
               </div>
-              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                <button
-                  onClick={() => startEdit(t)}
-                  className="p-1.5 rounded-lg text-gray-600 hover:text-blue-400 hover:bg-blue-500/10 transition-all"
-                >
-                  <Pencil className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => handleDelete(t.id)}
-                  className="p-1.5 rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-all"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
+              {can('templates', 'execute') && (
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                  <button
+                    onClick={() => startEdit(t)}
+                    className="p-1.5 rounded-lg text-gray-600 hover:text-blue-400 hover:bg-blue-500/10 transition-all"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(t.id)}
+                    className="p-1.5 rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
             </motion.div>
           ))
         )}

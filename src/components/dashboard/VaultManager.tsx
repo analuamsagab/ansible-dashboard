@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { api } from '../../lib/api'
 import { useFetch } from '../../hooks/useFetch'
+import { useAuth } from '../../context/AuthContext'
 import { motion } from 'framer-motion'
 import { Lock, Plus, Trash2, Eye, KeyRound, Copy, Check } from 'lucide-react'
 import { Modal } from '../ui/Modal'
@@ -14,6 +15,7 @@ interface VaultItem {
 }
 
 export function VaultManager() {
+  const { can } = useAuth()
   const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -108,13 +110,15 @@ export function VaultManager() {
           <Lock className="w-4 h-4 text-emerald-400" />
           Ansible Vault
         </h2>
-        <button
-          onClick={() => { setShowForm(!showForm) }}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-emerald-600 hover:bg-emerald-500 rounded-lg transition-colors text-white"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          Add
-        </button>
+        {can('vault', 'execute') && (
+          <button
+            onClick={() => { setShowForm(!showForm) }}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-emerald-600 hover:bg-emerald-500 rounded-lg transition-colors text-white"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Add
+          </button>
+        )}
       </div>
 
       {showForm && (
@@ -192,29 +196,31 @@ export function VaultManager() {
                   </p>
                 </div>
               </div>
-              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                <button
-                  onClick={() => { setViewTarget(item); setViewPassword(''); setViewContent(null); setViewError(null) }}
-                  className="p-1.5 rounded-lg text-gray-600 hover:text-blue-400 hover:bg-blue-500/10 transition-all"
-                  title="Decrypt & view"
-                >
-                  <Eye className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => { setRekeyTarget(item); setOldPassword(''); setNewPassword('') }}
-                  className="p-1.5 rounded-lg text-gray-600 hover:text-yellow-400 hover:bg-yellow-500/10 transition-all"
-                  title="Change vault password"
-                >
-                  <KeyRound className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => handleDelete(item.id)}
-                  className="p-1.5 rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-all"
-                  title="Delete"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
+              {can('vault', 'execute') && (
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                  <button
+                    onClick={() => { setViewTarget(item); setViewPassword(''); setViewContent(null); setViewError(null) }}
+                    className="p-1.5 rounded-lg text-gray-600 hover:text-blue-400 hover:bg-blue-500/10 transition-all"
+                    title="Decrypt & view"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => { setRekeyTarget(item); setOldPassword(''); setNewPassword('') }}
+                    className="p-1.5 rounded-lg text-gray-600 hover:text-yellow-400 hover:bg-yellow-500/10 transition-all"
+                    title="Change vault password"
+                  >
+                    <KeyRound className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(item.id)}
+                    className="p-1.5 rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                    title="Delete"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
             </motion.div>
           ))
         )}

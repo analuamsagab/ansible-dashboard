@@ -1,5 +1,7 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { api } from '../../lib/api'
+import { useFetch } from '../../hooks/useFetch'
+import { useAuth } from '../../context/AuthContext'
 import { motion } from 'framer-motion'
 import { ScrollText, Upload, Trash2, FileText, Code, CheckSquare, Pencil } from 'lucide-react'
 import { YamlEditor } from './YamlEditor'
@@ -16,7 +18,8 @@ interface Playbook {
 }
 
 export function PlaybookManager() {
-  const [tab, setTab] = useState<'upload' | 'custom' | 'saved'>('custom')
+  const { can } = useAuth()
+  const [tab, setTab] = useState<'upload' | 'custom' | 'saved'>(can('playbooks', 'execute') ? 'custom' : 'saved')
   const [customName, setCustomName] = useState('')
   const [customYaml, setCustomYaml] = useState('')
   const [saving, setSaving] = useState(false)
@@ -136,13 +139,15 @@ export function PlaybookManager() {
 
       <div className="flex gap-1 bg-gray-800/50 rounded-lg p-1 border border-gray-700">
         {[
-          { id: 'custom', label: 'Custom', icon: Code },
-          { id: 'upload', label: 'Upload', icon: Upload },
-          { id: 'saved', label: 'Saved', icon: FileText },
+          ...(can('playbooks', 'execute') ? [
+            { id: 'custom' as const, label: 'Custom', icon: Code },
+            { id: 'upload' as const, label: 'Upload', icon: Upload },
+          ] : []),
+          { id: 'saved' as const, label: 'Saved', icon: FileText },
         ].map((t) => (
           <button
             key={t.id}
-            onClick={() => setTab(t.id as typeof tab)}
+            onClick={() => setTab(t.id)}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-sm rounded-md transition-all font-medium ${
               tab === t.id
                 ? 'bg-emerald-600 text-white shadow-sm'
@@ -244,13 +249,15 @@ export function PlaybookManager() {
                     </div>
                   </div>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                    <button
-                      onClick={() => handleEditStart(p)}
-                      className="p-1.5 rounded-lg text-gray-600 hover:text-blue-400 hover:bg-blue-500/10 transition-all"
-                      title="Edit"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                    </button>
+                    {can('playbooks', 'execute') && (
+                      <button
+                        onClick={() => handleEditStart(p)}
+                        className="p-1.5 rounded-lg text-gray-600 hover:text-blue-400 hover:bg-blue-500/10 transition-all"
+                        title="Edit"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                     <button
                       onClick={() => handleLintSaved(p.id, p.content_yaml)}
                       className="p-1.5 rounded-lg text-gray-600 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all"
@@ -258,13 +265,15 @@ export function PlaybookManager() {
                     >
                       <CheckSquare className="w-3.5 h-3.5" />
                     </button>
-                    <button
-                      onClick={() => handleDelete(p.id)}
-                      className="p-1.5 rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-all"
-                      title="Delete"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    {can('playbooks', 'execute') && (
+                      <button
+                        onClick={() => handleDelete(p.id)}
+                        className="p-1.5 rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 </motion.div>
               ))}

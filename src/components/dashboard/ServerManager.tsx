@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { api } from '../../lib/api'
+import { useFetch } from '../../hooks/useFetch'
+import { useAuth } from '../../context/AuthContext'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Server, Plus, Trash2, EthernetPort, User, Key, Lock, Pencil } from 'lucide-react'
 import { CardSkeleton } from '../ui/Skeleton'
@@ -14,7 +16,9 @@ interface Server {
 }
 
 export function ServerManager() {
-  const [servers, setServers] = useState<Server[]>([])
+  const { can } = useAuth()
+  const { data: serversRaw, loading, refetch } = useFetch<Server[]>(() => api.getServers(), [])
+  const servers = serversRaw ?? []
   const [showForm, setShowForm] = useState(false)
   const [friendlyName, setFriendlyName] = useState('')
   const [ipAddress, setIpAddress] = useState('')
@@ -22,7 +26,6 @@ export function ServerManager() {
   const [sshPort, setSshPort] = useState('22')
   const [sshKey, setSshKey] = useState('')
   const [sshPassword, setSshPassword] = useState('')
-  const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
@@ -36,22 +39,11 @@ export function ServerManager() {
   const [editError, setEditError] = useState<string | null>(null)
   const [editSaving, setEditSaving] = useState(false)
 
-  const fetchServers = async () => {
-    try {
-      const data = await api.getServers()
-      setServers(data)
-    } catch {}
-    setLoading(false)
-  }
-
-  useEffect(() => { fetchServers() }, [])
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setErrorMessage(null)
     if (!sshKey && !sshPassword) { setErrorMessage('SSH key or password is required'); return }
 
-    setLoading(true)
     try {
       await api.createServer({
         friendly_name: friendlyName,
@@ -63,18 +55,17 @@ export function ServerManager() {
       })
       setFriendlyName(''); setIpAddress(''); setSshUser('root'); setSshPort('22')
       setSshKey(''); setSshPassword(''); setShowForm(false)
-      fetchServers()
+      refetch()
     } catch (err: unknown) {
       setErrorMessage((err as Error).message)
     }
-    setLoading(false)
   }
 
   const handleDelete = async (id: string) => {
     setDeleting(id)
     await api.deleteServer(id)
     setDeleting(null)
-    fetchServers()
+    refetch()
   }
 
   const openEdit = (s: Server) => {
@@ -106,7 +97,7 @@ export function ServerManager() {
 
       await api.updateServer(editTarget.id, payload)
       setEditTarget(null)
-      fetchServers()
+      refetch()
     } catch (err: unknown) {
       setEditError((err as Error).message)
     }
@@ -120,13 +111,15 @@ export function ServerManager() {
           <Server className="w-4 h-4 text-emerald-400" />
           Servers
         </h2>
-        <button
-          onClick={() => { setShowForm(!showForm); setErrorMessage(null) }}
-          className="flex items-center gap-1.5 text-sm px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg transition-colors text-white"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          {showForm ? 'Cancel' : 'Add'}
-        </button>
+        {can('servers', 'execute') && (
+          <button
+            onClick={() => { setShowForm(!showForm); setErrorMessage(null) }}
+            className="flex items-center gap-1.5 text-sm px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg transition-colors text-white"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            {showForm ? 'Cancel' : 'Add'}
+          </button>
+        )}
       </div>
 
       <AnimatePresence>
@@ -189,21 +182,23 @@ export function ServerManager() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                <button
-                  onClick={() => openEdit(s)}
-                  className="p-1.5 rounded-lg text-gray-600 hover:text-blue-400 hover:bg-blue-500/10 transition-all"
-                >
-                  <Pencil className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => handleDelete(s.id)}
-                  disabled={deleting === s.id}
-                  className="p-1.5 rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-all"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
+              {can('servers', 'execute') && (
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                  <button
+                    onClick={() => openEdit(s)}
+                    className="p-1.5 rounded-lg text-gray-600 hover:text-blue-400 hover:bg-blue-500/10 transition-all"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(s.id)}
+                    disabled={deleting === s.id}
+                    className="p-1.5 rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
             </motion.div>
           ))
         )}
