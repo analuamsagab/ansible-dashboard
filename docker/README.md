@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - Server with Docker + Docker Compose installed
-- Supabase project (cloud) already created
+- Ansible installed in the backend container (included in Dockerfile)
 - Domain pointing to server IP (optional)
 
 ## Quick Start
@@ -11,31 +11,24 @@
 ### 1. Prepare env files
 
 ```bash
-# Frontend build args
 cp docker/.env.example docker/.env
-# Edit docker/.env → fill VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY
-
-# Worker runtime env
-cp worker/.env.example worker/.env
-# Edit worker/.env → fill SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY
+# Edit docker/.env → fill JWT_SECRET with a random string
 ```
 
 ### 2. Deploy
 
 ```bash
 cd docker
-docker compose up -d
+docker compose up -d --build
 ```
 
-### 3. Run database setup
-
-Open Supabase SQL Editor, paste and run `supabase-fix.sql`.
-
-### 4. Open browser
+### 3. Open browser
 
 ```
 http://your-server-ip
 ```
+
+Register the first user — they'll automatically get the admin role.
 
 ## Commands
 
@@ -52,43 +45,42 @@ docker compose up -d
 
 # View logs
 docker compose logs -f frontend
-docker compose logs -f worker
+docker compose logs -f backend
 
 # Restart a service
-docker compose restart worker
+docker compose restart backend
 ```
 
 ## File Layout
 
 ```
 docker/
-├── docker-compose.yml      ← Service definitions
-├── .env                    ← Frontend build args (VITE_SUPABASE_*)
-├── .env.example            ← Template for .env
-├── README.md               ← This file
+├── docker-compose.yml       ← Service definitions
+├── .env                     ← Environment variables
+├── .env.example             ← Template for .env
+├── README.md                ← This file
 └── frontend/
-    ├── Dockerfile           ← Multi-stage build (Vite → Nginx)
-    └── nginx.conf           ← Nginx SPA configuration
+    ├── Dockerfile            ← Multi-stage build (Vite → Nginx)
+    └── nginx.conf            ← Nginx SPA + API/WS proxy
 ```
 
 ## Architecture
 
 ```
-Browser ──▶ frontend:80 (Nginx) ── serves static build
-               │
-               ├── Supabase REST/Realtime (direct from browser)
-               │
-Worker (Node + Ansible) ◀── Supabase Realtime subscription
-               │
-               └── SSH ▶ Target Servers
+Browser ──▶ nginx:80 (frontend container)
+                │
+                ├── /api ──▶ backend:3001 (Express + SQLite)
+                ├── /ws  ──▶ backend:3001 (WebSocket)
+                └── /     ──▶ static files (Vite build)
+
+Backend (Node + Ansible) ───▶ SSH ──▶ Target Servers
+Data stored in SQLite volume (ansible-data)
 ```
 
 ## Environment Variables
 
-| Variable | Where | Type | Purpose |
-|---|---|---|---|
-| `VITE_SUPABASE_URL` | `docker/.env` | Build-arg | Frontend Supabase endpoint |
-| `VITE_SUPABASE_ANON_KEY` | `docker/.env` | Build-arg | Frontend Supabase anon key |
-| `SUPABASE_URL` | `worker/.env` | Runtime | Worker Supabase endpoint |
-| `SUPABASE_SERVICE_ROLE_KEY` | `worker/.env` | Runtime | Worker service role key |
-| `JOB_TIMEOUT_MS` | `worker/.env` | Runtime | Ansible job timeout (default 30min) |
+| Variable          | Where | Type    | Purpose                                |
+|-------------------|-------|---------|----------------------------------------|
+| `VITE_API_URL`    | .env  | Build   | Frontend API path (/api with nginx)    |
+| `JWT_SECRET`      | .env  | Runtime | Auth token signing key                 |
+| `JOB_TIMEOUT_MS`  | .env  | Runtime | Ansible job timeout (default 30min)    |
