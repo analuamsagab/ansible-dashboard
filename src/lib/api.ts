@@ -1,12 +1,12 @@
 const BASE = import.meta.env.VITE_API_URL || ''
 
 function token(): string | null {
-  return localStorage.getItem('token')
+  return sessionStorage.getItem('token')
 }
 
 function setToken(t: string | null) {
-  if (t) localStorage.setItem('token', t)
-  else localStorage.removeItem('token')
+  if (t) sessionStorage.setItem('token', t)
+  else sessionStorage.removeItem('token')
 }
 
 async function req<T = unknown>(path: string, opts: RequestInit = {}): Promise<T> {
